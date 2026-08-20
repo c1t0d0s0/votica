@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 投票ドキュメント
+    match /polls/{pollId} {
+      // 誰でも読み取り可能 (未ログインでも投票概要の参照は可能)
+      allow read: if true;
+
+      // ログイン済みユーザーなら誰でも新規作成可能
+      allow create: if request.auth != null 
+                    && request.resource.data.creatorUid == request.auth.uid;
+
+      // 作成者 (管理者) のみ更新・削除可能
+      allow update, delete: if request.auth != null 
+                            && resource.data.creatorUid == request.auth.uid;
+
+      // ラウンド情報 (第1ラウンド、決選投票ラウンド...)
+      match /rounds/{roundNumber} {
+        allow read: if true;
+        
+        // 作成者のみラウンド作成・編集可能
+        allow write: if request.auth != null 
+                     && get(/databases/$(database)/documents/polls/$(pollId)).data.creatorUid == request.auth.uid;
+
+        // 投票データ (1人1票 = document IDがuserId)
+        match /votes/{userId} {
+          // 管理者 または 結果公開フラグがtrueの場合 または 投票者本人は閲覧可能
+          allow read: if request.auth != null && (
+            userId == request.auth.uid ||
+            get(/databases/$(database)/documents/polls/$(pollId)).data.creatorUid == request.auth.uid ||
+            get(/databases/$(database)/documents/polls/$(pollId)).data.isPublicResult == true
+          );
+
+          // 認証済みで、自分のUIDでのみ投票・再投票が可能
+          allow create, update: if request.auth != null 
+                                && request.auth.uid == userId
+                                && request.resource.data.userId == request.auth.uid;
+
+          // 投票の取り消し (本人のみ)
+          allow delete: if request.auth != null && request.auth.uid == userId;
+        }
+      }
+    }
+  }
+}
