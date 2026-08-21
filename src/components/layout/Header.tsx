@@ -18,6 +18,15 @@ export const Header: React.FC = () => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
+  // Show Firebase settings button only in local environment
+  const isLocalEnvironment =
+    import.meta.env.DEV ||
+    (typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.endsWith('.local')));
+
   return (
     <>
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200">
@@ -51,22 +60,24 @@ export const Header: React.FC = () => {
               </Button>
             </Link>
 
-            {/* Firebase Status pill */}
-            <button
-              onClick={() => setIsConfigModalOpen(true)}
-              title={isFirebaseConfigured ? 'Firebase接続中 (設定を確認)' : 'ローカルデモ動作中 (Firebase設定)'}
-              className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
-                isFirebaseConfigured
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-              }`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span className="hidden md:inline font-medium">
-                {isFirebaseConfigured ? 'Firebase' : 'Demo'}
-              </span>
-              <Settings className="w-3 h-3 text-slate-400" />
-            </button>
+            {/* Firebase Status pill (Local environment only) */}
+            {isLocalEnvironment && (
+              <button
+                onClick={() => setIsConfigModalOpen(true)}
+                title={isFirebaseConfigured ? 'Firebase接続中 (設定を確認)' : 'ローカルデモ動作中 (Firebase設定)'}
+                className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  isFirebaseConfigured
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span className="hidden md:inline font-medium">
+                  {isFirebaseConfigured ? 'Firebase' : 'Demo'}
+                </span>
+                <Settings className="w-3 h-3 text-slate-400" />
+              </button>
+            )}
 
             {/* Auth Actions */}
             {currentUser ? (
