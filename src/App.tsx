@@ -7,6 +7,7 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/HomePage';
 import { CreatePollPage } from './pages/CreatePollPage';
+import { CreateSchedulePage } from './pages/CreateSchedulePage';
 import { PollVotingPage } from './pages/PollVotingPage';
 import { PollResultsPage } from './pages/PollResultsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -23,6 +24,7 @@ export const App: React.FC = () => {
               <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/create" element={<CreatePollPage />} />
+                <Route path="/create-schedule" element={<CreateSchedulePage />} />
                 <Route path="/poll/:pollId" element={<PollVotingPage />} />
                 <Route path="/poll/:pollId/results" element={<PollResultsPage />} />
                 <Route path="*" element={<NotFoundPage />} />

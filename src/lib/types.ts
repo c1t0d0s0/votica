@@ -19,6 +19,8 @@ export interface PollRound {
   createdAt?: string;
 }
 
+export type ScheduleChoice = 'circle' | 'triangle' | 'cross' | 'question';
+
 export interface Poll {
   id: string;
   title: string;
@@ -35,6 +37,7 @@ export interface Poll {
   showVoterNames: boolean; // true = show voter breakdown per option, false = hide who voted for what (default: false)
   currentRound: number;
   totalRounds: number;
+  pollType?: 'poll' | 'schedule'; // 'poll' (standard voting) | 'schedule' (chouseisan-style schedule adjustment)
 }
 
 export interface Vote {
@@ -43,7 +46,36 @@ export interface Vote {
   userDisplayName?: string;
   userPhotoURL?: string;
   selectedOptionIds: string[];
+  scheduleResponses?: Record<string, ScheduleChoice>; // optionId -> 'circle' | 'triangle' | 'cross' | 'question'
+  comment?: string; // Optional short comment from voter
   votedAt: string;
+}
+
+export interface ScheduleOptionSummary {
+  option: PollOption;
+  circleCount: number;
+  triangleCount: number;
+  crossCount: number;
+  questionCount: number;
+  score: number; // circle * 2 + triangle * 1
+  rank: number;
+  isBest?: boolean;
+}
+
+export interface ScheduleVoterRow {
+  userId: string;
+  userDisplayName: string;
+  userPhotoURL?: string;
+  responses: Record<string, ScheduleChoice>;
+  comment?: string;
+  votedAt: string;
+}
+
+export interface ScheduleResultSummary {
+  options: ScheduleOptionSummary[];
+  voters: ScheduleVoterRow[];
+  totalVoters: number;
+  bestOptions: ScheduleOptionSummary[];
 }
 
 export interface OptionResult {

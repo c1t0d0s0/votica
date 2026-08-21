@@ -7,7 +7,7 @@ import { Poll } from '../lib/types';
 import { PollCard } from '../components/poll/PollCard';
 import { DeletePollModal } from '../components/poll/DeletePollModal';
 import { Button } from '../components/common/Button';
-import { Vote, PlusCircle, Search } from 'lucide-react';
+import { Vote, PlusCircle, Search, Calendar } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
 export const HomePage: React.FC = () => {
@@ -103,9 +103,18 @@ export const HomePage: React.FC = () => {
             </button>
           </div>
 
-          <Link to="/create" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
-            {t('common.newPoll')}
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/create-schedule"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100/70 px-2.5 py-1 rounded-lg transition-colors border border-indigo-200"
+            >
+              <Calendar className="w-3 h-3" />
+              <span>{t('schedule.homeCreateBtn')}</span>
+            </Link>
+            <Link to="/create" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
+              {t('common.newPoll')}
+            </Link>
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -118,11 +127,18 @@ export const HomePage: React.FC = () => {
                 <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
                   {t('home.noMyPollsDesc')}
                 </p>
-                <Link to="/create" className="mt-4 inline-block">
-                  <Button variant="primary" size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
-                    {t('home.createFirstPoll')}
-                  </Button>
-                </Link>
+                <div className="mt-4 flex items-center justify-center gap-2.5 flex-wrap">
+                  <Link to="/create-schedule">
+                    <Button variant="outline" size="sm" leftIcon={<Calendar className="w-4 h-4 text-indigo-600" />}>
+                      {t('schedule.homeCreateBtn')}
+                    </Button>
+                  </Link>
+                  <Link to="/create">
+                    <Button variant="primary" size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
+                      {t('home.createFirstPoll')}
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
