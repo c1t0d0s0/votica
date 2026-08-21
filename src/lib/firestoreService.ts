@@ -482,6 +482,31 @@ export async function updatePollVisibility(pollId: string, isPublicResult: boole
 }
 
 /**
+ * Updates overall poll status (active / closed / archived).
+ */
+export async function updatePollStatus(
+  pollId: string,
+  status: 'active' | 'closed' | 'archived'
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  if (!isFirebaseConfigured || !db) {
+    const polls = getMockPolls();
+    if (polls[pollId]) {
+      polls[pollId].status = status;
+      polls[pollId].updatedAt = nowIso;
+      saveMockPolls(polls);
+    }
+    return;
+  }
+
+  const pollDocRef = doc(db, 'polls', pollId);
+  await updateDoc(pollDocRef, {
+    status,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
  * Updates round status (open / closed).
  */
 export async function updateRoundStatus(

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Poll } from '../../lib/types';
-import { Swords, Lock, Globe, ArrowRight } from 'lucide-react';
+import { Swords, Lock, Globe, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 interface PollCardProps {
   poll: Poll;
@@ -9,7 +9,8 @@ interface PollCardProps {
 }
 
 export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
-  const isRunoffActive = poll.totalRounds > 1;
+  const isClosed = poll.status === 'closed';
+  const isRunoffActive = !isClosed && poll.totalRounds > 1;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 hover:border-indigo-300 hover:shadow-lg transition-all flex flex-col justify-between group">
@@ -17,7 +18,12 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
         {/* Header badges */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {isRunoffActive ? (
+            {isClosed ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                決着・終了 (全{poll.totalRounds}回)
+              </span>
+            ) : isRunoffActive ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">
                 <Swords className="w-3 h-3" />
                 第{poll.currentRound}回 決選投票
@@ -70,7 +76,7 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
           to={`/poll/${poll.id}`}
           className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 group-hover:translate-x-0.5 transition-all"
         >
-          <span>詳細・投票</span>
+          <span>{isClosed ? '結果を見る' : '詳細・投票'}</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>

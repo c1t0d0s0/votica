@@ -9,6 +9,7 @@ import {
   subscribeAllRounds,
   updatePollVisibility,
   updateRoundStatus,
+  updatePollStatus,
 } from '../lib/firestoreService';
 import { Poll, PollRound, Vote, RoundResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
@@ -27,6 +28,7 @@ import {
   Shield,
   AlertCircle,
   Vote as VoteIcon,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const PollResultsPage: React.FC = () => {
@@ -182,17 +184,48 @@ export const PollResultsPage: React.FC = () => {
     }
   };
 
+  const handleFinalizePoll = async () => {
+    if (!isAdmin) return;
+    try {
+      await updatePollStatus(poll.id, 'closed');
+      showToast('success', 'この投票を「決着・終了」に設定しました');
+    } catch (err: any) {
+      showToast('error', 'ステータス更新に失敗しました: ' + (err.message || ''));
+    }
+  };
+
+  const handleReopenPoll = async () => {
+    if (!isAdmin) return;
+    try {
+      await updatePollStatus(poll.id, 'active');
+      showToast('success', '投票を再開（進行中）に設定しました');
+    } catch (err: any) {
+      showToast('error', 'ステータス更新に失敗しました: ' + (err.message || ''));
+    }
+  };
+
+  const isPollSettled = summary?.winner && !summary?.hasTieForFirst;
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Top Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <Link
-          to={`/poll/${poll.id}`}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>投票ページへ戻る</span>
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            to={`/poll/${poll.id}`}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>投票ページへ戻る</span>
+          </Link>
+
+          {poll.status === 'closed' && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+              投票決着・終了
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <Button
@@ -266,7 +299,7 @@ export const PollResultsPage: React.FC = () => {
               )
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {currentRoundData.status === 'open' && Date.now() <= new Date(currentRoundData.endDate).getTime() ? (
                 <button
                   onClick={handleCloseRound}
@@ -282,6 +315,22 @@ export const PollResultsPage: React.FC = () => {
                   投票受付を再開する
                 </button>
               )}
+
+              {poll.status === 'closed' ? (
+                <button
+                  onClick={handleReopenPoll}
+                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2"
+                >
+                  投票全体を再開する
+                </button>
+              ) : isPollSettled ? (
+                <button
+                  onClick={handleFinalizePoll}
+                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2"
+                >
+                  この投票を完了（決着）にする
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

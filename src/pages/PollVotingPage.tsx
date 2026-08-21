@@ -282,10 +282,15 @@ export const PollVotingPage: React.FC = () => {
       {/* Top Navigation & Round Selector */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 flex-wrap">
-          {poll.totalRounds > 1 ? (
+          {poll.status === 'closed' ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              投票決着・終了 (全{poll.totalRounds}回)
+            </span>
+          ) : poll.totalRounds > 1 ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-pink-100 text-pink-800 border border-pink-200">
               <Swords className="w-3.5 h-3.5 text-pink-600" />
-              決選投票進行中 (全{poll.totalRounds}ラウンド)
+              第{poll.currentRound}回 決選投票進行中 (全{poll.totalRounds}ラウンド)
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
