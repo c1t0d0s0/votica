@@ -243,15 +243,17 @@ export const PollResultsPage: React.FC = () => {
                 {poll.isPublicResult ? '結果公開中 (全体公開)' : '結果非公開 (管理者のみ)'}
               </Button>
 
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setIsRunoffModalOpen(true)}
-                leftIcon={<Swords className="w-3.5 h-3.5" />}
-                className="bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 shadow-pink-500/20 text-xs"
-              >
-                決選投票を開始
-              </Button>
+              {summary?.hasTieForFirst && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsRunoffModalOpen(true)}
+                  leftIcon={<Swords className="w-3.5 h-3.5" />}
+                  className="bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 shadow-pink-500/20 text-xs"
+                >
+                  決選投票を開始
+                </Button>
+              )}
             </div>
           </div>
 

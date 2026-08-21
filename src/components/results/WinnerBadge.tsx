@@ -87,7 +87,7 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-600" />
-                  第1位 確定候補
+                  第1位 確定
                 </span>
                 <span className="text-xs font-semibold text-indigo-700">
                   {summary.winner.votesCount} 票 ({summary.winner.percentage}%)
@@ -98,18 +98,6 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
               </h4>
             </div>
           </div>
-
-          {isAdmin && onOpenRunoffModal && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenRunoffModal}
-              leftIcon={<Swords className="w-4 h-4 text-indigo-600" />}
-              className="text-xs hidden md:inline-flex"
-            >
-              次の決選ラウンドを作成
-            </Button>
-          )}
         </div>
       </div>
     );
