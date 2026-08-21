@@ -7,6 +7,7 @@ import {
   getAccessedPollIds,
   recordAccessedPoll,
   removeAccessedPoll,
+  deletePoll,
 } from './firestoreService';
 import { PollOption, PollRound } from './types';
 
@@ -177,5 +178,55 @@ describe('firestoreService - Poll Discovery and URL-based Access', () => {
 
     const nonExistent = await getPoll('poll_does_not_exist');
     expect(nonExistent).toBeNull();
+  });
+  it('allows creator to delete poll and removes it from all lists', async () => {
+    const pollId = await createPoll(
+      {
+        title: 'Poll to Delete',
+        description: 'Will be deleted',
+        creatorUid: 'user_admin',
+        creatorDisplayName: 'Admin User',
+        status: 'active',
+        isPublicResult: true,
+        requireAuth: true,
+        showVoterNames: false,
+      },
+      sampleRound
+    );
+
+    // Verify it exists initially
+    expect(await getPoll(pollId)).not.toBeNull();
+    expect((await getUserCreatedPolls('user_admin')).length).toBe(1);
+    expect(getAccessedPollIds()).toContain(pollId);
+
+    // Creator deletes poll
+    await deletePoll(pollId, 'user_admin');
+
+    // Verify it is gone
+    expect(await getPoll(pollId)).toBeNull();
+    expect((await getUserCreatedPolls('user_admin')).length).toBe(0);
+    expect(getAccessedPollIds()).not.toContain(pollId);
+    expect(await getPublicPolls()).toEqual([]);
+  });
+
+  it('rejects deletion when user is not the creator', async () => {
+    const pollId = await createPoll(
+      {
+        title: 'Protected Poll',
+        description: 'Cannot be deleted by others',
+        creatorUid: 'user_owner',
+        creatorDisplayName: 'Owner',
+        status: 'active',
+        isPublicResult: true,
+        requireAuth: true,
+        showVoterNames: false,
+      },
+      sampleRound
+    );
+
+    await expect(deletePoll(pollId, 'user_impostor')).rejects.toThrow('権限がありません');
+
+    // Poll should still exist
+    expect(await getPoll(pollId)).not.toBeNull();
   });
 });

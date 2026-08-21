@@ -1,15 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Poll } from '../../lib/types';
-import { Swords, Lock, Globe, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Swords, Lock, Globe, ArrowRight, CheckCircle2, Trash2 } from 'lucide-react';
 import { useTranslation } from '../../contexts/LanguageContext';
 
 interface PollCardProps {
   poll: Poll;
   isCreator?: boolean;
+  onDelete?: (poll: Poll) => void;
 }
 
-export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
+export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator, onDelete }) => {
   const { t } = useTranslation();
   const isClosed = poll.status === 'closed';
   const isRunoffActive = !isClosed && poll.totalRounds > 1;
@@ -43,11 +44,27 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
             )}
           </div>
 
-          <div className="flex items-center gap-1 text-slate-400 text-xs" title={poll.isPublicResult ? t('results.publicResultsBtn') : t('results.privateResultsBtn')}>
-            {poll.isPublicResult ? (
-              <Globe className="w-3.5 h-3.5 text-emerald-500" />
-            ) : (
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1 text-slate-400 text-xs">
+            <div title={poll.isPublicResult ? t('results.publicResultsBtn') : t('results.privateResultsBtn')}>
+              {poll.isPublicResult ? (
+                <Globe className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </div>
+            {isCreator && onDelete && (
+              <button
+                type="button"
+                onClick={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete(poll);
+                }}
+                title={t('common.deletePoll')}
+                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors ml-0.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             )}
           </div>
         </div>

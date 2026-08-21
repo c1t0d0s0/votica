@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/LanguageContext';
 import { getUserCreatedPolls, getPublicPolls } from '../lib/firestoreService';
 import { Poll } from '../lib/types';
 import { PollCard } from '../components/poll/PollCard';
+import { DeletePollModal } from '../components/poll/DeletePollModal';
 import { Button } from '../components/common/Button';
 import { Vote, PlusCircle, Search } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
@@ -19,22 +20,27 @@ export const HomePage: React.FC = () => {
   const [directPollId, setDirectPollId] = useState('');
   const [myPolls, setMyPolls] = useState<Poll[]>([]);
   const [publicPolls, setPublicPolls] = useState<Poll[]>([]);
+  const [pollToDelete, setPollToDelete] = useState<Poll | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const loadPolls = useCallback(async () => {
+    try {
+      if (currentUser) {
+        const userPolls = await getUserCreatedPolls(currentUser.uid);
+        setMyPolls(userPolls);
+      } else {
+        setMyPolls([]);
+      }
+      const pub = await getPublicPolls();
+      setPublicPolls(pub);
+    } catch (e) {
+      console.error('Error loading polls:', e);
+    }
+  }, [currentUser]);
 
   useEffect(() => {
-    const loadPolls = async () => {
-      try {
-        if (currentUser) {
-          const userPolls = await getUserCreatedPolls(currentUser.uid);
-          setMyPolls(userPolls);
-        }
-        const pub = await getPublicPolls();
-        setPublicPolls(pub);
-      } catch (e) {
-        console.error('Error loading polls:', e);
-      }
-    };
     loadPolls();
-  }, [currentUser]);
+  }, [loadPolls]);
 
   const handleDirectAccess = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,7 +127,15 @@ export const HomePage: React.FC = () => {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {myPolls.map(poll => (
-                  <PollCard key={poll.id} poll={poll} isCreator={true} />
+                  <PollCard
+                    key={poll.id}
+                    poll={poll}
+                    isCreator={true}
+                    onDelete={p => {
+                      setPollToDelete(p);
+                      setIsDeleteModalOpen(true);
+                    }}
+                  />
                 ))}
               </div>
             )}
@@ -145,6 +159,14 @@ export const HomePage: React.FC = () => {
                     key={poll.id}
                     poll={poll}
                     isCreator={currentUser?.uid === poll.creatorUid}
+                    onDelete={
+                      currentUser?.uid === poll.creatorUid
+                        ? p => {
+                            setPollToDelete(p);
+                            setIsDeleteModalOpen(true);
+                          }
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -152,6 +174,22 @@ export const HomePage: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* Delete Poll Modal */}
+      {pollToDelete && (
+        <DeletePollModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            setIsDeleteModalOpen(false);
+            setPollToDelete(null);
+          }}
+          pollTitle={pollToDelete.title}
+          pollId={pollToDelete.id}
+          onSuccess={() => {
+            loadPolls();
+          }}
+        />
+      )}
     </div>
   );
 };

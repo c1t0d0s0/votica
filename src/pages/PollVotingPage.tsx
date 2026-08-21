@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -18,6 +18,7 @@ import { VoteOptionCard } from '../components/poll/VoteOptionCard';
 import { CountdownTimer } from '../components/poll/CountdownTimer';
 import { ShareModal } from '../components/poll/ShareModal';
 import { RunoffWizardModal } from '../components/poll/RunoffWizardModal';
+import { DeletePollModal } from '../components/poll/DeletePollModal';
 import { RoundSelector } from '../components/results/RoundSelector';
 import { Button } from '../components/common/Button';
 import {
@@ -33,6 +34,7 @@ import {
   Layers,
   ShieldCheck,
   Globe,
+  Trash2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -41,6 +43,7 @@ export const PollVotingPage: React.FC = () => {
   const { currentUser, signInWithGoogle } = useAuth();
   const { showToast } = useToast();
   const { t, language } = useTranslation();
+  const navigate = useNavigate();
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [allRounds, setAllRounds] = useState<PollRound[]>([]);
@@ -54,6 +57,7 @@ export const PollVotingPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isRunoffModalOpen, setIsRunoffModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pollLoading, setPollLoading] = useState(true);
 
   // Self-declared nickname and persistent anonymous device ID for no-login polls
@@ -363,6 +367,18 @@ export const PollVotingPage: React.FC = () => {
               </Button>
             </Link>
           )}
+
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsDeleteModalOpen(true)}
+              leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />}
+              className="text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700"
+            >
+              {t('common.delete')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -644,6 +660,17 @@ export const PollVotingPage: React.FC = () => {
         onClose={() => setIsShareModalOpen(false)}
         pollTitle={poll.title}
         pollId={poll.id}
+      />
+
+      {/* Delete Modal */}
+      <DeletePollModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        pollTitle={poll.title}
+        pollId={poll.id}
+        onSuccess={() => {
+          navigate('/');
+        }}
       />
     </div>
   );

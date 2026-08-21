@@ -20,6 +20,7 @@ import { WinnerBadge } from '../components/results/WinnerBadge';
 import { RoundSelector } from '../components/results/RoundSelector';
 import { RunoffWizardModal } from '../components/poll/RunoffWizardModal';
 import { ShareModal } from '../components/poll/ShareModal';
+import { DeletePollModal } from '../components/poll/DeletePollModal';
 import { Button } from '../components/common/Button';
 import {
   Swords,
@@ -32,6 +33,7 @@ import {
   Vote as VoteIcon,
   CheckCircle2,
   Users,
+  Trash2,
 } from 'lucide-react';
 
 export const PollResultsPage: React.FC = () => {
@@ -50,6 +52,7 @@ export const PollResultsPage: React.FC = () => {
 
   const [isRunoffModalOpen, setIsRunoffModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
   const [isTogglingVoterNames, setIsTogglingVoterNames] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -330,6 +333,16 @@ export const PollResultsPage: React.FC = () => {
                   {t('results.startRunoffBtn')}
                 </Button>
               )}
+
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsDeleteModalOpen(true)}
+                leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                className="bg-rose-700/90 hover:bg-rose-600 border border-rose-600/50 text-white text-xs"
+              >
+                {t('common.deletePoll')}
+              </Button>
             </div>
           </div>
 
@@ -441,6 +454,17 @@ export const PollResultsPage: React.FC = () => {
         onClose={() => setIsShareModalOpen(false)}
         pollTitle={poll.title}
         pollId={poll.id}
+      />
+
+      {/* Delete Modal */}
+      <DeletePollModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        pollTitle={poll.title}
+        pollId={poll.id}
+        onSuccess={() => {
+          navigate('/');
+        }}
       />
     </div>
   );

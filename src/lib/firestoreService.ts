@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   updateDoc,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -747,4 +748,73 @@ export async function getPublicPolls(): Promise<Poll[]> {
     console.error('Error fetching accessed public polls:', err);
     return [];
   }
+}
+
+/**
+ * Deletes a poll and all its associated rounds and votes.
+ * Only the creator is authorized to delete the poll.
+ */
+export async function deletePoll(pollId: string, currentUserId?: string): Promise<void> {
+  if (!pollId) return;
+
+  if (!isFirebaseConfigured || !db) {
+    const polls = getMockPolls();
+    const poll = polls[pollId];
+    if (poll && currentUserId && poll.creatorUid !== currentUserId) {
+      throw new Error('投票を削除する権限がありません');
+    }
+
+    if (polls[pollId]) {
+      delete polls[pollId];
+      saveMockPolls(polls);
+    }
+
+    const rounds = getMockRounds();
+    if (rounds[pollId]) {
+      delete rounds[pollId];
+      saveMockRounds(rounds);
+    }
+
+    const votes = getMockVotes();
+    if (votes[pollId]) {
+      delete votes[pollId];
+      saveMockVotes(votes);
+    }
+
+    removeAccessedPoll(pollId);
+    return;
+  }
+
+  // Check authorization in Firestore
+  const pollDocRef = doc(db, 'polls', pollId);
+  const snap = await getDoc(pollDocRef);
+  if (snap.exists()) {
+    const data = snap.data();
+    if (currentUserId && data.creatorUid && data.creatorUid !== currentUserId) {
+      throw new Error('投票を削除する権限がありません');
+    }
+  }
+
+  // Delete all rounds and their votes subcollections
+  try {
+    const roundsColRef = collection(db, 'polls', pollId, 'rounds');
+    const roundsSnap = await getDocs(roundsColRef);
+    for (const roundDoc of roundsSnap.docs) {
+      try {
+        const votesColRef = collection(db, 'polls', pollId, 'rounds', roundDoc.id, 'votes');
+        const votesSnap = await getDocs(votesColRef);
+        for (const voteDoc of votesSnap.docs) {
+          await deleteDoc(voteDoc.ref);
+        }
+      } catch (e) {
+        console.warn(`Error deleting votes for round ${roundDoc.id}:`, e);
+      }
+      await deleteDoc(roundDoc.ref);
+    }
+  } catch (err) {
+    console.warn('Error deleting subcollections for poll:', err);
+  }
+
+  await deleteDoc(pollDocRef);
+  removeAccessedPoll(pollId);
 }
