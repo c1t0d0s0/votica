@@ -18,8 +18,8 @@ sequenceDiagram
     participant DB as Cloud Firestore / LocalStorage
     participant Router as React Router
 
-    Admin->>UI: Fills Title, Description, Dates, Options (2–20), Rules
-    Admin->>UI: Clicks "Create Poll" button
+    Admin->>UI: Fill Title, Description, Dates, Options (2 to 20), Rules
+    Admin->>UI: Click Create Poll button
     UI->>Auth: Verify currentUser (Google Sign-In)
     alt User Not Logged In
         Auth-->>UI: Unauthenticated
@@ -31,7 +31,7 @@ sequenceDiagram
         Service->>DB: setDoc(/polls/{pollId}/rounds/1, round1Data)
         Service->>Service: recordAccessedPoll(pollId)
         Service-->>UI: Returns pollId
-        UI->>Router: navigate('/poll/' + pollId)
+        UI->>Router: navigate to /poll/{pollId}
         Router-->>Admin: Render PollVotingPage (Round 1)
     end
 ```
@@ -51,22 +51,22 @@ sequenceDiagram
     participant DB as Cloud Firestore (votes subcollection)
     participant Confetti as Canvas Confetti
 
-    Voter->>UI: Opens /poll/{pollId}
-    UI->>Service: subscribePoll({pollId}) & subscribeRound({pollId}, roundNum)
-    Service->>DB: onSnapshot(/polls/{pollId}) & (/rounds/{roundNum})
-    DB-->>UI: Real-time Poll & Round Data
+    Voter->>UI: Open /poll/{pollId}
+    UI->>Service: subscribePoll({pollId}) and subscribeRound({pollId}, roundNum)
+    Service->>DB: onSnapshot(/polls/{pollId}) and (/rounds/{roundNum})
+    DB-->>UI: Real-time Poll and Round Data
     Service->>Service: recordAccessedPoll(pollId)
 
-    Voter->>UI: Selects options (within maxChoices limit)
-    alt If Guest Mode Enabled (requireAuth == false)
-        Voter->>UI: Enters self-declared Nickname
+    Voter->>UI: Select options (within maxChoices limit)
+    alt Guest Mode Enabled (requireAuth is false)
+        Voter->>UI: Enter self-declared Nickname
     end
 
-    Voter->>UI: Clicks "Submit Vote" / "Update Vote"
-    UI->>UI: Validate choices count <= round.maxChoices & deadline is open
+    Voter->>UI: Click Submit Vote or Update Vote
+    UI->>UI: Validate choices count and check open deadline
 
     UI->>Service: castVote(pollId, roundNum, votePayload)
-    Service->>DB: Check round.status == 'open' && now <= round.endDate
+    Service->>DB: Check round status is open and current time is before deadline
     alt Round Expired or Closed
         DB-->>UI: Error: Voting period has ended
         UI-->>Voter: Show error toast
@@ -75,7 +75,7 @@ sequenceDiagram
         DB-->>Service: Write Successful
         Service-->>UI: Success
         UI->>Confetti: Trigger celebratory confetti particles
-        UI-->>Voter: Show "Vote submitted successfully" toast
+        UI-->>Voter: Show Vote submitted successfully toast
     end
 ```
 
@@ -93,17 +93,17 @@ sequenceDiagram
     participant Utils as calculateRoundResults (runoffUtils)
     participant ResultsUI as PollResultsPage / ResultBarChart
 
-    DB->>Service: onSnapshot triggered (new / updated vote document)
-    Service->>ResultsUI: Callback with Vote[] list
+    DB->>Service: onSnapshot triggered (new or updated vote document)
+    Service->>ResultsUI: Callback with Vote list
     ResultsUI->>Utils: calculateRoundResults(currentRoundData, votes)
     
     rect rgb(240, 245, 255)
-        Note over Utils: 1. Count votes per option ID<br/>2. Compute standard competition rank (1, 1, 3...)<br/>3. Calculate voter % (votes / totalVoters)<br/>4. Detect 1st place tie (tiedFirstOptions) or single winner
+        Note over Utils: 1. Count votes per option ID<br/>2. Compute standard competition rank (1, 1, 3...)<br/>3. Calculate voter percentage (votes / totalVoters)<br/>4. Detect 1st place tie or single winner
     end
 
     Utils-->>ResultsUI: Return RoundResultSummary
-    ResultsUI->>ResultsUI: Re-render ResultBarChart & WinnerBadge
-    Note over ResultsUI: Charts & animations update live without page reload
+    ResultsUI->>ResultsUI: Re-render ResultBarChart and WinnerBadge
+    Note over ResultsUI: Charts and animations update live without page reload
 ```
 
 ---
@@ -123,23 +123,23 @@ sequenceDiagram
     participant DB as Cloud Firestore
     actor Voters as All Participants
 
-    Note over ResultsUI: Deadline passes or Admin closes round early with a tie detected
-    ResultsUI-->>Admin: Banner: "Tie for 1st Place Detected! Start Runoff Round"
-    Admin->>ResultsUI: Clicks "Start Runoff Round"
+    Note over ResultsUI: Deadline passes or Admin closes round early with tie detected
+    ResultsUI-->>Admin: Show tie alert banner
+    Admin->>ResultsUI: Click Start Runoff Round
     ResultsUI->>Modal: Open RunoffWizardModal(summary, nextRound=2)
     
-    Admin->>Modal: Choose candidate extraction mode ('tie_breaker' | 'top_k' | 'manual')
+    Admin->>Modal: Choose candidate extraction mode (tie_breaker, top_k, or manual)
     Modal->>Utils: filterCandidatesForRunoff(summary, mode)
     Utils-->>Modal: Pre-populated candidate options
-    Admin->>Modal: Configures Round 2 title, duration, max choices
-    Admin->>Modal: Clicks "Start Round 2 Runoff"
+    Admin->>Modal: Configure Round 2 title, duration, max choices
+    Admin->>Modal: Click Start Round 2 Runoff
 
-    Modal->>Service: createRunoffRound(pollId, round2Data, nextRoundNumber=2)
+    Modal->>Service: createRunoffRound(pollId, round2Data, 2)
     Service->>DB: updateDoc(/rounds/1, { status: 'closed' })
     Service->>DB: setDoc(/rounds/2, round2Data)
     Service->>DB: updateDoc(/polls/{pollId}, { currentRound: 2, totalRounds: 2 })
     Service-->>Modal: Success (nextRoundNumber=2)
-    Modal-->>ResultsUI: Close modal & switch active view to Round 2
+    Modal-->>ResultsUI: Close modal and switch active view to Round 2
 
     Note over DB,Voters: Real-time listener notifies all connected participant browsers
     DB-->>Voters: Broadcast new currentRound: 2
@@ -161,34 +161,31 @@ sequenceDiagram
     participant DB as Cloud Firestore
     actor Public as Non-Admin Participant
 
-    %% 1. Results Visibility Toggle
     rect rgb(245, 255, 245)
         Note over Admin,Public: 1. Toggle Results Visibility (Public vs Admin Only)
-        Admin->>UI: Clicks "Results: Private" -> Toggle to Public
-        UI->>Service: updatePollVisibility(pollId, isPublicResult=true)
+        Admin->>UI: Switch results visibility from Private to Public
+        UI->>Service: updatePollVisibility(pollId, true)
         Service->>DB: updateDoc(/polls/{pollId}, { isPublicResult: true })
-        DB-->>Public: onSnapshot broadcast isPublicResult: true
-        Public->>Public: Access /poll/{pollId}/results permitted; charts rendered
+        DB-->>Public: onSnapshot broadcasts isPublicResult is true
+        Public->>Public: Results access permitted and charts rendered
     end
 
-    %% 2. Voter Names Visibility Toggle
     rect rgb(255, 250, 240)
         Note over Admin,Public: 2. Toggle Voter Name Breakdown (Named vs Anonymous)
-        Admin->>UI: Clicks "Voter Breakdown: Hidden" -> Toggle to Visible
-        UI->>Service: updatePollVoterNamesVisibility(pollId, showVoterNames=true)
+        Admin->>UI: Switch voter breakdown from Hidden to Visible
+        UI->>Service: updatePollVoterNamesVisibility(pollId, true)
         Service->>DB: updateDoc(/polls/{pollId}, { showVoterNames: true })
-        DB-->>Public: onSnapshot broadcast showVoterNames: true
-        Public->>Public: ResultBarChart displays participant names next to selected options
+        DB-->>Public: onSnapshot broadcasts showVoterNames is true
+        Public->>Public: ResultBarChart displays participant names
     end
 
-    %% 3. Early Close / Reopen
     rect rgb(255, 245, 245)
         Note over Admin,Public: 3. Manual Round Early Close or Reopen
-        Admin->>UI: Clicks "End this round early"
+        Admin->>UI: Click end round early
         UI->>Service: updateRoundStatus(pollId, roundNum, 'closed')
         Service->>DB: updateDoc(/rounds/{roundNum}, { status: 'closed' })
-        DB-->>Public: onSnapshot broadcast status: 'closed'
-        Public->>Public: Voting form closes immediately; results displayed
+        DB-->>Public: onSnapshot broadcasts status is closed
+        Public->>Public: Voting form closes immediately and results displayed
     end
 ```
 
@@ -208,24 +205,24 @@ sequenceDiagram
     participant DB as Cloud Firestore
     participant Router as React Router
 
-    Admin->>UI: Clicks "Delete Poll" icon / button
+    Admin->>UI: Click Delete Poll button
     UI->>Modal: Open DeletePollModal(pollTitle, pollId)
-    Modal-->>Admin: Show confirmation warning: "This action cannot be undone."
-    Admin->>Modal: Clicks "Delete Permanently"
+    Modal-->>Admin: Show confirmation warning (Action cannot be undone)
+    Admin->>Modal: Click Delete Permanently
 
     Modal->>Service: deletePoll(pollId, currentUser.uid)
-    Service->>DB: Verify getDoc(/polls/{pollId}).creatorUid == currentUser.uid
-    Service->>DB: Query and delete all docs in /rounds/{roundNumber}/votes
-    Service->>DB: Query and delete all docs in /rounds/{roundNumber}
+    Service->>DB: Verify getDoc(/polls/{pollId}).creatorUid matches currentUser.uid
+    Service->>DB: Delete all documents in /rounds/{roundNumber}/votes
+    Service->>DB: Delete all documents in /rounds/{roundNumber}
     Service->>DB: deleteDoc(/polls/{pollId})
     Service->>Service: removeAccessedPoll(pollId)
     Service-->>Modal: Success
 
-    Modal-->>UI: Show "Poll deleted successfully" toast
+    Modal-->>UI: Show poll deleted toast
     alt On VotingPage or ResultsPage
-        UI->>Router: navigate('/') (Redirect to Home Dashboard)
+        UI->>Router: navigate to / (Redirect to Home Dashboard)
     else On HomePage
-        UI->>UI: Re-fetch user created polls & update dashboard list
+        UI->>UI: Re-fetch user created polls and update dashboard
     end
 ```
 
@@ -245,30 +242,28 @@ sequenceDiagram
     participant Storage as LocalStorage (votica_accessed_poll_ids)
     participant Service as getPublicPolls
 
-    %% Scenario A: Stranger visits home
     rect rgb(255, 245, 245)
         Note over Stranger,Storage: Scenario A: Stranger visits Homepage without URL
         Stranger->>Home: Opens https://votica.app/
         Home->>Service: getPublicPolls()
-        Service->>Storage: getAccessedPollIds() -> Returns []
-        Service-->>Home: Returns []
-        Home-->>Stranger: Displays empty state: "No public polls available (0)"
-        Note over Stranger,Home: Stranger CANNOT view other people's unshared polls
+        Service->>Storage: getAccessedPollIds() returns empty array
+        Service-->>Home: Returns empty array
+        Home-->>Stranger: Displays empty state (No public polls available)
+        Note over Stranger,Home: Stranger cannot view other users unshared polls
     end
 
-    %% Scenario B: Invited Participant accesses via URL or ID
     rect rgb(245, 255, 245)
         Note over Invited,Storage: Scenario B: Participant receives link and visits
         Invited->>Voting: Opens shared link /poll/poll_xyz
         Voting->>Storage: recordAccessedPoll('poll_xyz')
-        Storage-->>Storage: Store ['poll_xyz', ...] (Max 50)
+        Storage-->>Storage: Store poll_xyz in access history (Max 50)
         Voting-->>Invited: Render poll voting interface
 
         Invited->>Home: Navigates back to Homepage (/)
         Home->>Service: getPublicPolls()
-        Service->>Storage: getAccessedPollIds() -> ['poll_xyz']
+        Service->>Storage: getAccessedPollIds() returns ['poll_xyz']
         Service->>Service: Fetch poll details for 'poll_xyz'
-        Service-->>Home: Returns [poll_xyz]
-        Home-->>Invited: Displays 'poll_xyz' under "Public / Accessed Polls (1)"
+        Service-->>Home: Returns poll_xyz
+        Home-->>Invited: Displays poll_xyz under Public / Accessed Polls
     end
 ```

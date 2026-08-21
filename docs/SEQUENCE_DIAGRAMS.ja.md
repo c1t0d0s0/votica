@@ -19,7 +19,7 @@ sequenceDiagram
     participant Router as React Router
 
     Admin->>UI: タイトル、説明、日時、選択肢（2〜20個）、ルールを入力
-    Admin->>UI: 「投票フォームを作成する」をクリック
+    Admin->>UI: 投票フォームを作成するボタンをクリック
     UI->>Auth: currentUser (Googleログイン状態) を確認
     alt 未ログインの場合
         Auth-->>UI: 未認証
@@ -31,8 +31,8 @@ sequenceDiagram
         Service->>DB: setDoc(/polls/{pollId}/rounds/1, round1Data)
         Service->>Service: recordAccessedPoll(pollId)
         Service-->>UI: 生成された pollId を返却
-        UI->>Router: navigate('/poll/' + pollId)
-        Router-->>Admin: 投票画面（第1回）へ遷移して表示
+        UI->>Router: /poll/{pollId} へ画面遷移
+        Router-->>Admin: 投票画面（第1回）を表示
     end
 ```
 
@@ -49,33 +49,33 @@ sequenceDiagram
     participant UI as PollVotingPage
     participant Service as FirestoreService
     participant DB as Cloud Firestore (votes subcollection)
-    participant Confetti as Canvas Confetti (紙吹雪)
+    participant Confetti as Canvas Confetti
 
     Voter->>UI: /poll/{pollId} にアクセス
-    UI->>Service: subscribePoll({pollId}) & subscribeRound({pollId}, roundNum)
-    Service->>DB: onSnapshot(/polls/{pollId}) & (/rounds/{roundNum})
+    UI->>Service: subscribePoll({pollId}) と subscribeRound({pollId}, roundNum) を開始
+    Service->>DB: onSnapshot(/polls/{pollId}) と (/rounds/{roundNum}) を購読
     DB-->>UI: リアルタイムな投票・ラウンド設定データを受信
     Service->>Service: recordAccessedPoll(pollId)
 
     Voter->>UI: 選択肢を選択（上限数 maxChoices 内）
-    alt ログイン不要設定の場合 (requireAuth == false)
+    alt ログイン不要設定の場合 (requireAuth が false)
         Voter->>UI: 自己申告のニックネームを入力
     end
 
-    Voter->>UI: 「投票を送信する」または「投票内容を変更して再投票」をクリック
-    UI->>UI: 選択肢数 <= round.maxChoices かつ 受付期間中であることを検証
+    Voter->>UI: 投票を送信する または 再投票をクリック
+    UI->>UI: 選択肢数と受付期間内であることを検証
 
     UI->>Service: castVote(pollId, roundNum, votePayload)
-    Service->>DB: round.status == 'open' かつ 現在時刻 <= round.endDate を検証
+    Service->>DB: round.status が open かつ 現在時刻が締切前かを検証
     alt 受付期間終了または締切済みの場合
-        DB-->>UI: エラー: 受付期間は終了しています
+        DB-->>UI: エラー: 受付期間終了
         UI-->>Voter: エラートーストを表示
     else 受付中の場合
         Service->>DB: setDoc(/polls/{pollId}/rounds/{roundNum}/votes/{userId}, voteData)
         DB-->>Service: 書き込み完了
         Service-->>UI: 成功
         UI->>Confetti: お祝いの紙吹雪アニメーションを発火
-        UI-->>Voter: 「投票が完了しました！」トーストを表示
+        UI-->>Voter: 投票完了トーストを表示
     end
 ```
 
@@ -94,11 +94,11 @@ sequenceDiagram
     participant ResultsUI as PollResultsPage / ResultBarChart
 
     DB->>Service: onSnapshot 発火（投票ドキュメントの追加・更新を検知）
-    Service->>ResultsUI: 最新の Vote[] 一覧をコールバックに通知
+    Service->>ResultsUI: 最新の Vote 一覧をコールバックに通知
     ResultsUI->>Utils: calculateRoundResults(currentRoundData, votes)
     
     rect rgb(240, 245, 255)
-        Note over Utils: 1. 選択肢ごとの得票数を集計<br/>2. 標準競技順位（1位, 1位, 3位...）を算出<br/>3. 投票者得票率（得票数 / 総投票者数）を計算<br/>4. 同率1位の有無（tiedFirstOptions）または単独勝者を判定
+        Note over Utils: 1. 選択肢ごとの得票数を集計<br/>2. 標準競技順位（1位, 1位, 3位...）を算出<br/>3. 投票者得票率（得票数 / 総投票者数）を計算<br/>4. 同率1位の有無または単独勝者を判定
     end
 
     Utils-->>ResultsUI: RoundResultSummary を返却
@@ -123,27 +123,27 @@ sequenceDiagram
     participant DB as Cloud Firestore
     actor Voters as 全参加者のブラウザ
 
-    Note over ResultsUI: 投票期間終了、または管理者が早期終了し同率1位を検出
-    ResultsUI-->>Admin: アラートバナー: 「同率1位が検出されました！決選投票を開始してください」
-    Admin->>ResultsUI: 「決選投票を開始」ボタンをクリック
+    Note over ResultsUI: 投票期間終了または管理者が早期終了し同率1位を検出
+    ResultsUI-->>Admin: 同率1位検出アラートバナーを表示
+    Admin->>ResultsUI: 決選投票を開始ボタンをクリック
     ResultsUI->>Modal: RunoffWizardModal を開く（前ラウンド集計, 次ラウンド=2）
     
-    Admin->>Modal: 候補抽出方法を選択（'tie_breaker'同率1位 / 'top_k'上位K件 / 'manual'手動選択）
+    Admin->>Modal: 候補抽出方法を選択（tie_breaker, top_k, または manual）
     Modal->>Utils: filterCandidatesForRunoff(summary, mode)
     Utils-->>Modal: 抽出された候補選択肢リスト
     Admin->>Modal: 第2回のタイトル、期間、上限選択数を設定
-    Admin->>Modal: 「第2回 決選投票を開始」をクリック
+    Admin->>Modal: 第2回 決選投票を開始をクリック
 
-    Modal->>Service: createRunoffRound(pollId, round2Data, nextRoundNumber=2)
-    Service->>DB: updateDoc(/rounds/1, { status: 'closed' })  ※前ラウンドを終了
-    Service->>DB: setDoc(/rounds/2, round2Data)               ※新ラウンド作成
+    Modal->>Service: createRunoffRound(pollId, round2Data, 2)
+    Service->>DB: updateDoc(/rounds/1, { status: 'closed' }) (前ラウンド終了)
+    Service->>DB: setDoc(/rounds/2, round2Data) (新ラウンド作成)
     Service->>DB: updateDoc(/polls/{pollId}, { currentRound: 2, totalRounds: 2 })
     Service-->>Modal: 成功（nextRoundNumber=2）
     Modal-->>ResultsUI: モーダルを閉じ、第2回の表示へ切り替え
 
     Note over DB,Voters: リアルタイムリスナーが接続中の全参加者ブラウザに通知
     DB-->>Voters: currentRound: 2 への更新をブロードキャスト
-    Voters-->>Voters: UI上で「第2回 決選投票へ移動」ボタンが表示され、決選投票へ参加
+    Voters-->>Voters: 画面上のボタンから第2回決選投票へ移動
 ```
 
 ---
@@ -161,34 +161,31 @@ sequenceDiagram
     participant DB as Cloud Firestore
     actor Public as 一般参加者
 
-    %% 1. 結果閲覧権限の切替
     rect rgb(245, 255, 245)
         Note over Admin,Public: 1. 結果公開/非公開の切替
-        Admin->>UI: 「結果非公開 (管理者のみ)」をクリックして公開に切り替え
-        UI->>Service: updatePollVisibility(pollId, isPublicResult=true)
+        Admin->>UI: 結果公開設定を非公開から全体公開へ切り替え
+        UI->>Service: updatePollVisibility(pollId, true)
         Service->>DB: updateDoc(/polls/{pollId}, { isPublicResult: true })
         DB-->>Public: onSnapshot で isPublicResult: true を受信
-        Public->>Public: 結果画面（/poll/{pollId}/results）の閲覧が許可され、グラフが表示される
+        Public->>Public: 結果画面の閲覧が許可されグラフが表示される
     end
 
-    %% 2. 投票者内訳の表示切替
     rect rgb(255, 250, 240)
-        Note over Admin,Public: 2. 投票者内訳の表示/非表示切替（記名投票 / 匿名投票）
-        Admin->>UI: 「投票者内訳: 非表示」をクリックして表示中に切り替え
-        UI->>Service: updatePollVoterNamesVisibility(pollId, showVoterNames=true)
+        Note over Admin,Public: 2. 投票者内訳の表示切替（記名/匿名）
+        Admin->>UI: 投票者内訳を非表示から表示中へ切り替え
+        UI->>Service: updatePollVoterNamesVisibility(pollId, true)
         Service->>DB: updateDoc(/polls/{pollId}, { showVoterNames: true })
         DB-->>Public: onSnapshot で showVoterNames: true を受信
-        Public->>Public: 各選択肢バーの下に投票者のお名前一覧が表示される
+        Public->>Public: 選択肢バーの下に投票者のお名前一覧が表示される
     end
 
-    %% 3. ラウンド早期終了 / 再開
     rect rgb(255, 245, 245)
         Note over Admin,Public: 3. ラウンドの即時締切 / 受付再開
-        Admin->>UI: 「このラウンドを早期終了する」をクリック
+        Admin->>UI: このラウンドを早期終了するをクリック
         UI->>Service: updateRoundStatus(pollId, roundNum, 'closed')
         Service->>DB: updateDoc(/rounds/{roundNum}, { status: 'closed' })
         DB-->>Public: onSnapshot で status: 'closed' を受信
-        Public->>Public: 投票ボタンが無効化され、受付終了状態へ切り替わる
+        Public->>Public: 投票ボタンが無効化され受付終了状態へ切り替わる
     end
 ```
 
@@ -208,22 +205,22 @@ sequenceDiagram
     participant DB as Cloud Firestore
     participant Router as React Router
 
-    Admin->>UI: ゴミ箱アイコン / 「投票を削除」ボタンをクリック
+    Admin->>UI: ゴミ箱アイコンまたは投票を削除ボタンをクリック
     UI->>Modal: DeletePollModal(pollTitle, pollId) を開く
-    Modal-->>Admin: 「この操作は取り消せません」の警告確認を表示
-    Admin->>Modal: 「完全に削除する」ボタンをクリック
+    Modal-->>Admin: 取り消せませんの警告確認を表示
+    Admin->>Modal: 完全に削除するボタンをクリック
 
     Modal->>Service: deletePoll(pollId, currentUser.uid)
-    Service->>DB: getDoc(/polls/{pollId}).creatorUid == currentUser.uid を検証
+    Service->>DB: getDoc(/polls/{pollId}).creatorUid と currentUser.uid の一致を検証
     Service->>DB: /rounds/{roundNumber}/votes 配下の全投票ドキュメントを削除
     Service->>DB: /rounds/{roundNumber} 配下の全ラウンドドキュメントを削除
     Service->>DB: deleteDoc(/polls/{pollId}) で本体を削除
     Service->>Service: removeAccessedPoll(pollId) でローカルアクセス履歴から除外
     Service-->>Modal: 削除完了
 
-    Modal-->>UI: 「投票を削除しました」トーストを表示
+    Modal-->>UI: 投票を削除しましたトーストを表示
     alt 投票画面または集計画面にいた場合
-        UI->>Router: navigate('/') (トップページへリダイレクト)
+        UI->>Router: / (トップページ) へリダイレクト
     else トップページにいた場合
         UI->>UI: 自分の作成した投票一覧を再取得して画面を更新
     end
@@ -245,30 +242,28 @@ sequenceDiagram
     participant Storage as LocalStorage (votica_accessed_poll_ids)
     participant Service as getPublicPolls
 
-    %% パターンA: URLを知らない第三者がアクセス
     rect rgb(255, 245, 245)
         Note over Stranger,Storage: パターンA: URLを知らない第三者がトップページを開く
         Stranger->>Home: https://votica.app/ にアクセス
         Home->>Service: getPublicPolls() を呼び出し
-        Service->>Storage: getAccessedPollIds() -> [] (空配列)
-        Service-->>Home: [] を返却
-        Home-->>Stranger: 「現在公開中の投票はありません (0)」と表示
-        Note over Stranger,Home: 第三者には他人の作成した投票が一切一覧表示されずプライバシーを保護
+        Service->>Storage: getAccessedPollIds() が空配列を返却
+        Service-->>Home: 空配列を返却
+        Home-->>Stranger: 現在公開中の投票はありませんと表示 (0件)
+        Note over Stranger,Home: 第三者には他人の作成した投票が一切一覧表示されず保護される
     end
 
-    %% パターンB: 共有リンクを受け取った参加者がアクセス
     rect rgb(245, 255, 245)
         Note over Invited,Storage: パターンB: 共有URLを受け取った参加者がアクセス
         Invited->>Voting: 共有リンク /poll/poll_xyz を開く
         Voting->>Storage: recordAccessedPoll('poll_xyz') を記録
-        Storage-->>Storage: ['poll_xyz', ...] として履歴に保存
+        Storage-->>Storage: poll_xyz を履歴に保存 (最大50件)
         Voting-->>Invited: 投票画面を表示
 
         Invited->>Home: 後からトップページ (/) に戻る
         Home->>Service: getPublicPolls() を呼び出し
-        Service->>Storage: getAccessedPollIds() -> ['poll_xyz'] を取得
+        Service->>Storage: getAccessedPollIds() から poll_xyz を取得
         Service->>Service: poll_xyz のドキュメントを取得
-        Service-->>Home: [poll_xyz] を返却
-        Home-->>Invited: 「公開中の投票 (1)」に poll_xyz が表示され、再訪が容易に
+        Service-->>Home: poll_xyz を返却
+        Home-->>Invited: 公開中の投票タブに poll_xyz が表示される
     end
 ```
