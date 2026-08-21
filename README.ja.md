@@ -102,16 +102,25 @@ firebase deploy --only firestore:indexes
 本リポジトリには `.github/workflows/deploy.yml` が含まれており、GitHub にプッシュするだけで自動デプロイされます。
 
 ### 手順:
-1. GitHub リポジトリの「Settings」->「Secrets and variables」->「Actions」を開きます。
-2. 以下の Repository Secrets を登録します:
-   - `VITE_FIREBASE_API_KEY`
-   - `VITE_FIREBASE_AUTH_DOMAIN`
-   - `VITE_FIREBASE_PROJECT_ID`
-   - `VITE_FIREBASE_STORAGE_BUCKET`
-   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
-   - `VITE_FIREBASE_APP_ID`
-3. GitHub リポジトリの「Settings」->「Pages」を開き、「Build and deployment」の Source を **GitHub Actions** に設定します。
-4. コードを `main` ブランチにプッシュすると、自動的に GitHub Pages にデプロイされます。
+1. **Firebase 認証情報 (Secrets) の設定**:
+   - GitHub リポジトリの「**Settings**」->「**Secrets and variables**」->「**Actions**」を開きます。
+   - 「**Secrets**」タブの「New repository secret」をクリックし、以下の Repository Secrets を登録します:
+     - `VITE_FIREBASE_API_KEY`
+     - `VITE_FIREBASE_AUTH_DOMAIN`
+     - `VITE_FIREBASE_PROJECT_ID`
+     - `VITE_FIREBASE_STORAGE_BUCKET`
+     - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+     - `VITE_FIREBASE_APP_ID`
+2. **Google Analytics タグID (Variables) の設定 (任意)**:
+   - 同じ「Actions」設定画面内の「**Variables**」タブに切り替えます。
+   - 「New repository variable」をクリックし、以下を登録します:
+     - Name: `VITE_GA_MEASUREMENT_ID`
+     - Value: `G-XXXXXXXXXX` (Google Analytics 4 の測定ID / タグID)
+   - ※ 設定されている場合のみ、デプロイビルド時に Google Analytics タグが自動的に埋め込まれます（未設定時はタグが挿入されず安全です）。
+3. **GitHub Pages の有効化**:
+   - GitHub リポジトリの「**Settings**」->「**Pages**」を開き、「Build and deployment」の Source を **GitHub Actions** に設定します。
+4. **デプロイの実行**:
+   - コードを `main` ブランチにプッシュすると、自動的に GitHub Pages にデプロイされます。
 
 ---
 

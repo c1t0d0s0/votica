@@ -102,16 +102,25 @@ firebase deploy --only firestore:indexes
 This repository includes `.github/workflows/deploy.yml` for automated CI/CD deployment on every push to GitHub.
 
 ### Setup Instructions:
-1. In your GitHub repository, go to **Settings** -> **Secrets and variables** -> **Actions**.
-2. Add the following Repository Secrets:
-   - `VITE_FIREBASE_API_KEY`
-   - `VITE_FIREBASE_AUTH_DOMAIN`
-   - `VITE_FIREBASE_PROJECT_ID`
-   - `VITE_FIREBASE_STORAGE_BUCKET`
-   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
-   - `VITE_FIREBASE_APP_ID`
-3. Go to **Settings** -> **Pages** and set **Source** to **GitHub Actions** under "Build and deployment".
-4. Push your code to the `main` branch, and GitHub Actions will automatically build and deploy the app to GitHub Pages.
+1. **Configure Firebase Credentials (Secrets)**:
+   - In your GitHub repository, go to **Settings** -> **Secrets and variables** -> **Actions**.
+   - Under the **Secrets** tab, click **New repository secret** and add:
+     - `VITE_FIREBASE_API_KEY`
+     - `VITE_FIREBASE_AUTH_DOMAIN`
+     - `VITE_FIREBASE_PROJECT_ID`
+     - `VITE_FIREBASE_STORAGE_BUCKET`
+     - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+     - `VITE_FIREBASE_APP_ID`
+2. **Configure Google Analytics Tag ID (Variables, Optional)**:
+   - Switch to the **Variables** tab under **Settings** -> **Secrets and variables** -> **Actions**.
+   - Click **New repository variable** and add:
+     - Name: `VITE_GA_MEASUREMENT_ID`
+     - Value: `G-XXXXXXXXXX` (Your Google Analytics 4 Measurement ID / Tag ID)
+   - *Note: If configured, the Google Analytics tracking script will automatically be injected during the build. If omitted, no tracking scripts are embedded.*
+3. **Enable GitHub Pages**:
+   - Go to **Settings** -> **Pages** and set **Source** to **GitHub Actions** under "Build and deployment".
+4. **Deploy**:
+   - Push your code to the `main` branch, and GitHub Actions will automatically build and deploy the app to GitHub Pages.
 
 ---
 
