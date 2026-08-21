@@ -93,13 +93,31 @@ export const PollResultsPage: React.FC = () => {
     };
   }, [pollId, selectedRoundNumber]);
 
-  // Calculate results on votes / round change
+  // Compute summary on round or votes update
   useEffect(() => {
     if (currentRoundData) {
-      const res = calculateRoundResults(currentRoundData, roundVotes);
-      setSummary(res);
+      setSummary(calculateRoundResults(currentRoundData, roundVotes));
     }
   }, [currentRoundData, roundVotes]);
+
+  // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed
+  useEffect(() => {
+    if (!poll || !currentRoundData || !summary) return;
+    if (poll.status === 'closed') return;
+    if (currentRoundData.roundNumber !== poll.totalRounds) return;
+
+    const isRoundEnded =
+      currentRoundData.status === 'closed' ||
+      Date.now() > new Date(currentRoundData.endDate).getTime();
+
+    if (isRoundEnded && summary.winner && !summary.hasTieForFirst) {
+      if (currentUser?.uid === poll.creatorUid) {
+        updatePollStatus(poll.id, 'closed').catch(err =>
+          console.warn('Auto-closing poll failed:', err)
+        );
+      }
+    }
+  }, [currentUser, poll, currentRoundData, summary]);
 
   if (loading) {
     return (
@@ -206,16 +224,6 @@ export const PollResultsPage: React.FC = () => {
     }
   };
 
-  const handleFinalizePoll = async () => {
-    if (!isAdmin) return;
-    try {
-      await updatePollStatus(poll.id, 'closed');
-      showToast('success', 'この投票を「決着・終了」に設定しました');
-    } catch (err: any) {
-      showToast('error', 'ステータス更新に失敗しました: ' + (err.message || ''));
-    }
-  };
-
   const handleReopenPoll = async () => {
     if (!isAdmin) return;
     try {
@@ -225,8 +233,6 @@ export const PollResultsPage: React.FC = () => {
       showToast('error', 'ステータス更新に失敗しました: ' + (err.message || ''));
     }
   };
-
-  const isPollSettled = summary?.winner && !summary?.hasTieForFirst;
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -353,21 +359,14 @@ export const PollResultsPage: React.FC = () => {
                 </button>
               )}
 
-              {poll.status === 'closed' ? (
+              {poll.status === 'closed' && (
                 <button
                   onClick={handleReopenPoll}
                   className="text-xs text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2"
                 >
                   投票全体を再開する
                 </button>
-              ) : isPollSettled ? (
-                <button
-                  onClick={handleFinalizePoll}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2"
-                >
-                  この投票を完了（決着）にする
-                </button>
-              ) : null}
+              )}
             </div>
           </div>
         </div>

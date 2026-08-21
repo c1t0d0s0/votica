@@ -9,6 +9,7 @@ import {
   subscribeRoundVotes,
   subscribeAllRounds,
   castVote,
+  updatePollStatus,
 } from '../lib/firestoreService';
 import { Poll, PollRound, Vote, RoundResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
@@ -129,6 +130,25 @@ export const PollVotingPage: React.FC = () => {
       setSummary(calculateRoundResults(currentRoundData, roundVotes));
     }
   }, [currentRoundData, roundVotes]);
+
+  // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed
+  useEffect(() => {
+    if (!poll || !currentRoundData || !summary) return;
+    if (poll.status === 'closed') return;
+    if (currentRoundData.roundNumber !== poll.totalRounds) return;
+
+    const isRoundEnded =
+      currentRoundData.status === 'closed' ||
+      Date.now() > new Date(currentRoundData.endDate).getTime();
+
+    if (isRoundEnded && summary.winner && !summary.hasTieForFirst) {
+      if (currentUser?.uid === poll.creatorUid) {
+        updatePollStatus(poll.id, 'closed').catch(err =>
+          console.warn('Auto-closing poll failed:', err)
+        );
+      }
+    }
+  }, [currentUser, poll, currentRoundData, summary]);
 
   // Effective User ID (Google Auth UID or Anonymous UID if login is not required)
   const isAnonymousAllowed = poll?.requireAuth === false;
