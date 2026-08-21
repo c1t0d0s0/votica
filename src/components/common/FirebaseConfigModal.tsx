@@ -5,6 +5,7 @@ import { getSavedFirebaseConfig, saveFirebaseConfig, clearFirebaseConfig, isFire
 import { FirebaseConfig } from '../../lib/types';
 import { CheckCircle2, AlertCircle, Key } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface FirebaseConfigModalProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface FirebaseConfigModalProps {
 
 export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen, onClose }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const currentConfig = getSavedFirebaseConfig();
 
   const [apiKey, setApiKey] = useState(currentConfig?.apiKey || '');
@@ -36,7 +38,7 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
       if (parsed.storageBucket) setStorageBucket(parsed.storageBucket);
       if (parsed.messagingSenderId) setMessagingSenderId(parsed.messagingSenderId);
       if (parsed.appId) setAppId(parsed.appId);
-      showToast('info', 'Firebase設定JSONを読み込みました');
+      showToast('info', t('firebaseModal.toastJsonLoaded'));
     } catch {
       // Not valid JSON yet, ignore
     }
@@ -45,7 +47,7 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!apiKey || !projectId) {
-      showToast('error', 'APIキーとプロジェクトIDは必須です');
+      showToast('error', t('firebaseModal.toastRequiredFields'));
       return;
     }
 
@@ -59,13 +61,13 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
     };
 
     saveFirebaseConfig(newConfig);
-    showToast('success', 'Firebase設定を保存しました。ページを再読み込みします');
+    showToast('success', t('firebaseModal.toastSaved'));
   };
 
   const handleClear = () => {
-    if (window.confirm('保存されているFirebase設定をクリアして、ローカルデモモードに戻しますか？')) {
+    if (window.confirm(t('firebaseModal.confirmReset'))) {
       clearFirebaseConfig();
-      showToast('info', 'Firebase設定をクリアしました');
+      showToast('info', t('firebaseModal.toastCleared'));
     }
   };
 
@@ -73,8 +75,8 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Firebase 接続設定"
-      description="Google認証およびFirestoreデータベースの接続先を設定します"
+      title={t('firebaseModal.title')}
+      description={t('firebaseModal.desc')}
       maxWidth="lg"
     >
       <div className="space-y-5">
@@ -93,12 +95,12 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
           )}
           <div className="text-xs">
             <span className="font-bold">
-              {isFirebaseConfigured ? 'Firebaseに接続中' : 'ローカルデモモードで動作中'}
+              {isFirebaseConfigured ? t('firebaseModal.statusConnected') : t('firebaseModal.statusLocalDemo')}
             </span>
             <p className="mt-0.5 text-slate-600">
               {isFirebaseConfigured
-                ? 'Google認証とFirestoreが有効です。'
-                : '設定が未入力の場合でも、ブラウザローカル保存機能で全機能を体験可能です。'}
+                ? t('firebaseModal.statusConnectedDesc')
+                : t('firebaseModal.statusLocalDemoDesc')}
             </p>
           </div>
         </div>
@@ -106,7 +108,7 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
         {/* Quick Paste JSON */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Firebaseコンソールの設定オブジェクトを貼り付け (任意)
+            {t('firebaseModal.quickPasteLabel')}
           </label>
           <textarea
             rows={2}
@@ -121,7 +123,7 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
         <form onSubmit={handleSave} className="space-y-3">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
-              API Key (apiKey) *
+              {t('firebaseModal.apiKeyLabel')}
             </label>
             <input
               type="text"
@@ -135,7 +137,7 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
-              Project ID (projectId) *
+              {t('firebaseModal.projectIdLabel')}
             </label>
             <input
               type="text"
@@ -150,7 +152,7 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Auth Domain (authDomain)
+                {t('firebaseModal.authDomainLabel')}
               </label>
               <input
                 type="text"
@@ -162,7 +164,7 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                App ID (appId)
+                {t('firebaseModal.appIdLabel')}
               </label>
               <input
                 type="text"
@@ -177,17 +179,17 @@ export const FirebaseConfigModal: React.FC<FirebaseConfigModalProps> = ({ isOpen
           <div className="pt-3 flex items-center justify-between gap-3 border-t border-slate-100">
             {isFirebaseConfigured ? (
               <Button type="button" variant="danger" size="sm" onClick={handleClear}>
-                設定をリセット
+                {t('firebaseModal.resetConfigBtn')}
               </Button>
             ) : (
-              <span className="text-xs text-slate-400">ブラウザ内にのみ安全に保存されます</span>
+              <span className="text-xs text-slate-400">{t('firebaseModal.localStorageNote')}</span>
             )}
             <div className="flex gap-2">
               <Button type="button" variant="outline" size="sm" onClick={onClose}>
-                キャンセル
+                {t('common.cancel')}
               </Button>
               <Button type="submit" variant="primary" size="sm" leftIcon={<Key className="w-4 h-4" />}>
-                保存して適用
+                {t('firebaseModal.saveApplyBtn')}
               </Button>
             </div>
           </div>

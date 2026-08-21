@@ -6,6 +6,7 @@ import {
   onAuthStateChanged,
 } from 'firebase/auth';
 import { auth, googleProvider, isFirebaseConfigured } from '../lib/firebase';
+import { useTranslation } from './LanguageContext';
 
 export interface AppUser {
   uid: string;
@@ -32,6 +33,7 @@ const DEMO_USER_KEY = 'votica_demo_user';
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const { t } = useTranslation();
 
   // Check demo user in localStorage if Firebase is not configured or demo mode
   useEffect(() => {
@@ -52,7 +54,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (firebaseUser) {
         setCurrentUser({
           uid: firebaseUser.uid,
-          displayName: firebaseUser.displayName || '名無しユーザー',
+          displayName: firebaseUser.displayName || t('common.user'),
           email: firebaseUser.email,
           photoURL: firebaseUser.photoURL,
           isAnonymous: firebaseUser.isAnonymous,
@@ -71,12 +73,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [t]);
 
   const signInWithGoogle = async () => {
     if (!isFirebaseConfigured || !auth || !googleProvider) {
       // Prompt demo sign-in
-      signInAsDemoUser('デモユーザー (Google認証未設定)');
+      signInAsDemoUser(t('common.demoUser'));
       return;
     }
 
@@ -94,11 +96,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signInAsDemoUser = (name = 'デモ参加者') => {
+  const signInAsDemoUser = (name?: string) => {
     const demoUid = 'demo_user_' + Math.random().toString(36).substring(2, 8);
     const demoUser: AppUser = {
       uid: demoUid,
-      displayName: name,
+      displayName: name || t('common.demoUser'),
       email: `${demoUid}@example.com`,
       photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=${demoUid}`,
       isMock: true,

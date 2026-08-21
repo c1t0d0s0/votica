@@ -2,6 +2,7 @@ import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/HomePage';
@@ -13,9 +14,10 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export const App: React.FC = () => {
   return (
     <Router>
-      <AuthProvider>
-        <ToastProvider>
-          <div className="flex flex-col min-h-screen">
+      <LanguageProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <div className="flex flex-col min-h-screen">
             <Header />
             <main className="flex-1">
               <Routes>
@@ -30,8 +32,9 @@ export const App: React.FC = () => {
           </div>
         </ToastProvider>
       </AuthProvider>
-    </Router>
-  );
+    </LanguageProvider>
+  </Router>
+);
 };
 
 export default App;

@@ -3,6 +3,7 @@ import confetti from 'canvas-confetti';
 import { RoundResultSummary } from '../../lib/types';
 import { Button } from '../common/Button';
 import { Trophy, Swords, AlertTriangle, Sparkles } from 'lucide-react';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface WinnerBadgeProps {
   summary: RoundResultSummary;
@@ -16,6 +17,8 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
   isAdmin,
   onOpenRunoffModal,
 }) => {
+  const { t, language } = useTranslation();
+
   // Fire confetti if there is a definitive winner and poll or round has votes
   useEffect(() => {
     if (summary.winner && summary.totalVoters > 0 && !summary.hasTieForFirst) {
@@ -43,17 +46,19 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                  同率1位検出
+                  {t('winnerBadge.tieDetected')}
                 </span>
                 <span className="text-xs text-slate-500">
-                  ({summary.tiedFirstOptions[0].votesCount}票獲得)
+                  ({summary.tiedFirstOptions[0].votesCount} {t('chart.votesUnit')})
                 </span>
               </div>
               <h4 className="text-base font-black text-slate-900 mt-1">
-                {summary.tiedFirstOptions.map(t => `「${t.option.text}」`).join(' と ')} が同率1位です！
+                {t('winnerBadge.tieMessage', {
+                  names: summary.tiedFirstOptions.map(tOpt => `「${tOpt.option.text}」`).join(language === 'ja' ? ' と ' : ' & ')
+                })}
               </h4>
               <p className="text-xs text-slate-600 mt-0.5">
-                決着をつけるために、同率候補のみでの決選投票を実施することができます。
+                {t('winnerBadge.tieDesc')}
               </p>
             </div>
           </div>
@@ -66,7 +71,7 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
               leftIcon={<Swords className="w-4 h-4" />}
               className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-200 shrink-0 w-full sm:w-auto"
             >
-              決選投票を開始
+              {t('winnerBadge.startRunoffBtn')}
             </Button>
           )}
         </div>
@@ -87,10 +92,10 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-amber-600" />
-                  第1位 確定
+                  {t('winnerBadge.firstPlaceWinner')}
                 </span>
                 <span className="text-xs font-semibold text-indigo-700">
-                  {summary.winner.votesCount} 票 ({summary.winner.percentage}%)
+                  {summary.winner.votesCount} {t('chart.votesUnit')} ({summary.winner.percentage}%)
                 </span>
               </div>
               <h4 className="text-lg font-black text-slate-900 mt-1">

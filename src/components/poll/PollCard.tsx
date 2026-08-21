@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Poll } from '../../lib/types';
 import { Swords, Lock, Globe, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface PollCardProps {
   poll: Poll;
@@ -9,6 +10,7 @@ interface PollCardProps {
 }
 
 export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
+  const { t } = useTranslation();
   const isClosed = poll.status === 'closed';
   const isRunoffActive = !isClosed && poll.totalRounds > 1;
 
@@ -20,28 +22,28 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
           <div className="flex items-center gap-1.5 flex-wrap">
             {isClosed ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                決着・終了 (全{poll.totalRounds}回)
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                {t('voting.pollConcluded', { total: poll.totalRounds })}
               </span>
             ) : isRunoffActive ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">
                 <Swords className="w-3 h-3" />
-                第{poll.currentRound}回 決選投票
+                {t('voting.roundN', { round: poll.currentRound })} ({t('common.runoffBadge')})
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                第1回 投票
+                {t('voting.round1')}
               </span>
             )}
 
             {isCreator && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                管理者
+                {t('common.admin')}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-1 text-slate-400 text-xs" title={poll.isPublicResult ? '結果公開中' : '結果非公開'}>
+          <div className="flex items-center gap-1 text-slate-400 text-xs" title={poll.isPublicResult ? t('results.publicResultsBtn') : t('results.privateResultsBtn')}>
             {poll.isPublicResult ? (
               <Globe className="w-3.5 h-3.5 text-emerald-500" />
             ) : (
@@ -68,7 +70,7 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
             {(poll.creatorDisplayName || 'U')[0]}
           </div>
           <span className="truncate max-w-[120px] text-slate-600 font-medium">
-            {poll.creatorDisplayName || '作成者'}
+            {poll.creatorDisplayName || t('common.creator')}
           </span>
         </div>
 
@@ -76,7 +78,7 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator }) => {
           to={`/poll/${poll.id}`}
           className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 group-hover:translate-x-0.5 transition-all"
         >
-          <span>{isClosed ? '結果を見る' : '詳細・投票'}</span>
+          <span>{isClosed ? t('common.viewResults') : t('common.detailsAndVote')}</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>

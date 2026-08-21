@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from '../contexts/LanguageContext';
 import { getUserCreatedPolls, getPublicPolls } from '../lib/firestoreService';
 import { Poll } from '../lib/types';
 import { PollCard } from '../components/poll/PollCard';
@@ -11,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 export const HomePage: React.FC = () => {
   const { currentUser } = useAuth();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'my' | 'public'>('my');
@@ -38,7 +40,7 @@ export const HomePage: React.FC = () => {
     e.preventDefault();
     const cleanId = directPollId.trim().replace(/^.*\/poll\//, '').replace(/^#\/poll\//, '');
     if (!cleanId) {
-      showToast('error', '投票IDまたはURLを入力してください');
+      showToast('error', t('home.enterPollIdError'));
       return;
     }
     navigate(`/poll/${cleanId}`);
@@ -52,17 +54,17 @@ export const HomePage: React.FC = () => {
         <form onSubmit={handleDirectAccess} className="flex flex-col sm:flex-row items-center gap-3">
           <div className="flex items-center gap-2 text-slate-700 font-bold text-sm shrink-0">
             <Search className="w-4 h-4 text-indigo-600" />
-            <span>投票に参加:</span>
+            <span>{t('home.joinPoll')}</span>
           </div>
           <input
             type="text"
             value={directPollId}
             onChange={e => setDirectPollId(e.target.value)}
-            placeholder="共有された投票IDまたはURLを貼り付け (例: poll_abc123)"
+            placeholder={t('home.pollIdPlaceholder')}
             className="flex-1 w-full text-sm bg-white text-slate-900 placeholder:text-slate-400 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-sm"
           />
           <Button type="submit" variant="secondary" size="md" className="w-full sm:w-auto shrink-0">
-            投票を開く
+            {t('home.openPoll')}
           </Button>
         </form>
       </section>
@@ -80,7 +82,7 @@ export const HomePage: React.FC = () => {
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
-                自分が作成した投票 ({myPolls.length})
+                {t('home.myPollsTab', { count: myPolls.length })}
               </button>
             )}
             <button
@@ -91,12 +93,12 @@ export const HomePage: React.FC = () => {
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
-              公開中の投票 ({publicPolls.length})
+              {t('home.publicPollsTab', { count: publicPolls.length })}
             </button>
           </div>
 
           <Link to="/create" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
-            + 新規作成
+            {t('common.newPoll')}
           </Link>
         </div>
 
@@ -106,13 +108,13 @@ export const HomePage: React.FC = () => {
             {myPolls.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300 p-8">
                 <Vote className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-slate-700">作成した投票はありません</h3>
+                <h3 className="text-base font-bold text-slate-700">{t('home.noMyPollsTitle')}</h3>
                 <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-                  チームの意思決定やアンケートのための投票フォームを数秒で作成できます。
+                  {t('home.noMyPollsDesc')}
                 </p>
                 <Link to="/create" className="mt-4 inline-block">
                   <Button variant="primary" size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
-                    最初の投票を作成
+                    {t('home.createFirstPoll')}
                   </Button>
                 </Link>
               </div>
@@ -131,9 +133,9 @@ export const HomePage: React.FC = () => {
             {publicPolls.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-slate-300 p-8">
                 <Vote className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-slate-700">現在公開中の投票はありません</h3>
+                <h3 className="text-base font-bold text-slate-700">{t('home.noPublicPollsTitle')}</h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  新しい投票を作成して参加者を招待しましょう！
+                  {t('home.noPublicPollsDesc')}
                 </p>
               </div>
             ) : (

@@ -3,6 +3,7 @@ import { PollOption } from '../../lib/types';
 import { Button } from '../common/Button';
 import { Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 import { getOptionColor } from '../../lib/runoffUtils';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface OptionInputListProps {
   options: PollOption[];
@@ -15,6 +16,8 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
   onChange,
   maxLimit = 20,
 }) => {
+  const { t } = useTranslation();
+
   const handleAddOption = () => {
     if (options.length >= maxLimit) return;
     const newId = 'opt_' + Math.random().toString(36).substring(2, 9);
@@ -57,7 +60,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <label className="text-sm font-bold text-slate-800">
-          投票の選択肢 <span className="text-rose-500">*</span>
+          {t('optionInput.title')} <span className="text-rose-500">*</span>
         </label>
         <span
           className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
@@ -66,7 +69,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
               : 'bg-indigo-50 text-indigo-700'
           }`}
         >
-          {options.length} / {maxLimit} 件 (2〜20件)
+          {t('optionInput.countLabel', { count: options.length, max: maxLimit })}
         </span>
       </div>
 
@@ -90,7 +93,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
               required
               value={opt.text}
               onChange={e => handleTextChange(index, e.target.value)}
-              placeholder={`選択肢 ${index + 1} (例: 選択肢の内容)`}
+              placeholder={t('optionInput.placeholder', { index: index + 1 })}
               className="flex-1 text-sm bg-white text-slate-900 placeholder:text-slate-400 px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none focus:bg-white transition-all shadow-sm"
             />
 
@@ -101,7 +104,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
                 disabled={index === 0}
                 onClick={() => handleMove(index, 'up')}
                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg disabled:opacity-25 disabled:hover:bg-transparent"
-                title="上へ移動"
+                title={t('optionInput.moveUp')}
               >
                 <ArrowUp className="w-4 h-4" />
               </button>
@@ -110,7 +113,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
                 disabled={index === options.length - 1}
                 onClick={() => handleMove(index, 'down')}
                 className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg disabled:opacity-25 disabled:hover:bg-transparent"
-                title="下へ移動"
+                title={t('optionInput.moveDown')}
               >
                 <ArrowDown className="w-4 h-4" />
               </button>
@@ -122,7 +125,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
               disabled={options.length <= 2}
               onClick={() => handleRemoveOption(index)}
               className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-400 shrink-0"
-              title={options.length <= 2 ? '選択肢は最低2つ必要です' : '選択肢を削除'}
+              title={options.length <= 2 ? t('optionInput.minRequired') : t('optionInput.remove')}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -139,7 +142,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
           leftIcon={<Plus className="w-4 h-4 text-indigo-600" />}
           className="w-full py-2.5 border-dashed border-2 hover:border-indigo-400 hover:bg-indigo-50/50 text-indigo-700 font-medium mt-2"
         >
-          選択肢を追加 (あと {maxLimit - options.length} 件)
+          {t('optionInput.addOption', { remaining: maxLimit - options.length })}
         </Button>
       )}
     </div>

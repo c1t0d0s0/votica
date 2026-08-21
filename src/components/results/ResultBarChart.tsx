@@ -1,6 +1,7 @@
 import React from 'react';
 import { RoundResultSummary } from '../../lib/types';
 import { Users } from 'lucide-react';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface ResultBarChartProps {
   summary: RoundResultSummary;
@@ -11,6 +12,8 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
   summary,
   showVoterNames = false,
 }) => {
+  const { t } = useTranslation();
+
   const getRankBadge = (rank: number) => {
     if (rank === 1) {
       return (
@@ -47,16 +50,16 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
       {/* Overview Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center">
-          <span className="text-[11px] font-semibold text-slate-500 block">総投票者数</span>
-          <span className="text-xl font-black text-indigo-900">{summary.totalVoters} 人</span>
+          <span className="text-[11px] font-semibold text-slate-500 block">{t('chart.totalVoters')}</span>
+          <span className="text-xl font-black text-indigo-900">{summary.totalVoters} {t('chart.votersUnit')}</span>
         </div>
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center">
-          <span className="text-[11px] font-semibold text-slate-500 block">総票数</span>
-          <span className="text-xl font-black text-indigo-900">{summary.totalVotes} 票</span>
+          <span className="text-[11px] font-semibold text-slate-500 block">{t('chart.totalVotes')}</span>
+          <span className="text-xl font-black text-indigo-900">{summary.totalVotes} {t('chart.votesUnit')}</span>
         </div>
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center col-span-2 sm:col-span-1">
-          <span className="text-[11px] font-semibold text-slate-500 block">最多得票数</span>
-          <span className="text-xl font-black text-indigo-900">{maxVotes} 票</span>
+          <span className="text-[11px] font-semibold text-slate-500 block">{t('chart.maxVotes')}</span>
+          <span className="text-xl font-black text-indigo-900">{maxVotes} {t('chart.votesUnit')}</span>
         </div>
       </div>
 
@@ -89,7 +92,7 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="text-sm font-black text-slate-900">{r.votesCount} 票</span>
+                  <span className="text-sm font-black text-slate-900">{r.votesCount} {t('chart.votesUnit')}</span>
                   <span className="text-xs font-semibold text-slate-400 ml-1.5">
                     ({r.percentage}%)
                   </span>
@@ -112,7 +115,7 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
                 <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
                   <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1 shrink-0 mr-1">
                     <Users className="w-3 h-3 text-indigo-500" />
-                    投票者 ({r.voters.length}名):
+                    {t('chart.votersBreakdown', { count: r.voters.length })}
                   </span>
                   {r.voters.map((v, vIdx) => (
                     <span

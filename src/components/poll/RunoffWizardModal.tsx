@@ -6,6 +6,7 @@ import { createRunoffRound } from '../../lib/firestoreService';
 import { filterCandidatesForRunoff, getOptionColor } from '../../lib/runoffUtils';
 import { Swords, Check, Users, Sparkles, Layers } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface RunoffWizardModalProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
   onSuccess,
 }) => {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initial candidate selection mode
@@ -42,13 +44,13 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
 
   // Round settings
   const defaultTitle = summary.hasTieForFirst
-    ? `第${nextRoundNumber}回 決選投票 (同率1位)`
-    : `第${nextRoundNumber}回 決選投票`;
+    ? t('runoffModal.defaultTitleTie', { round: nextRoundNumber })
+    : t('runoffModal.defaultTitleGeneral', { round: nextRoundNumber });
   const [title, setTitle] = useState(defaultTitle);
   const [description] = useState(
     summary.hasTieForFirst
-      ? `前回の投票で同率1位となった候補による決選投票です。再度1人1票を投票してください。`
-      : `上位候補による決選投票です。再度1人1票を投票してください。`
+      ? t('runoffModal.defaultDescTie')
+      : t('runoffModal.defaultDescTopK')
   );
 
   // Dates
@@ -71,9 +73,9 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
     const candidates = filterCandidatesForRunoff(summary, mode, k);
     setSelectedCandidateIds(candidates.map(c => c.id));
     if (mode === 'tie_breaker') {
-      setTitle(`第${nextRoundNumber}回 決選投票 (同率1位)`);
+      setTitle(t('runoffModal.defaultTitleTie', { round: nextRoundNumber }));
     } else if (mode === 'top_k') {
-      setTitle(`第${nextRoundNumber}回 決選投票 (上位${k}件)`);
+      setTitle(t('runoffModal.defaultTitleTopK', { round: nextRoundNumber, k }));
     }
   };
 
@@ -81,7 +83,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
     setRunoffMode('manual');
     if (selectedCandidateIds.includes(optId)) {
       if (selectedCandidateIds.length <= 2) {
-        showToast('warning', '決選投票には最低2つの選択肢が必要です');
+        showToast('warning', t('runoffModal.toastMinCandidatesWarning'));
         return;
       }
       setSelectedCandidateIds(prev => prev.filter(id => id !== optId));
@@ -94,12 +96,12 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
     e.preventDefault();
 
     if (selectedCandidateIds.length < 2) {
-      showToast('error', '決選投票には最低2つの候補が必要です');
+      showToast('error', t('runoffModal.toastMinCandidatesWarning'));
       return;
     }
 
     if (new Date(endDate).getTime() <= new Date(startDate).getTime()) {
-      showToast('error', '終了日時は開始日時より未来に設定してください');
+      showToast('error', t('create.dateOrderError'));
       return;
     }
 
@@ -112,7 +114,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
       }));
 
     const newRound: Omit<PollRound, 'roundNumber'> = {
-      title: title.trim() || `第${nextRoundNumber}回 決選投票`,
+      title: title.trim() || t('runoffModal.defaultTitleGeneral', { round: nextRoundNumber }),
       description: description.trim(),
       startDate: new Date(startDate).toISOString(),
       endDate: new Date(endDate).toISOString(),
@@ -126,12 +128,12 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
     try {
       setIsSubmitting(true);
       await createRunoffRound(pollId, newRound, nextRoundNumber);
-      showToast('success', `第${nextRoundNumber}回 決選投票を開始しました！`);
+      showToast('success', t('runoffModal.toastSuccess', { round: nextRoundNumber }));
       onSuccess(nextRoundNumber);
       onClose();
     } catch (err: any) {
       console.error('Failed to create runoff:', err);
-      showToast('error', '決選投票の作成に失敗しました: ' + (err.message || ''));
+      showToast('error', t('runoffModal.toastError') + (err.message || ''));
     } finally {
       setIsSubmitting(false);
     }
@@ -141,15 +143,15 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`第${nextRoundNumber}回 決選投票の作成`}
-      description="前回の投票結果を引き継ぎ、新しい決選投票ラウンドを開始します"
+      title={t('runoffModal.title', { round: nextRoundNumber })}
+      description={t('runoffModal.desc')}
       maxWidth="xl"
     >
       <form onSubmit={handleCreateRunoff} className="space-y-5">
         {/* Mode Selector Tabs */}
         <div>
           <label className="block text-xs font-bold text-slate-700 mb-2">
-            決選投票の候補抽出方法
+            {t('runoffModal.candidateMethodLabel')}
           </label>
           <div className="grid grid-cols-3 gap-2">
             {summary.hasTieForFirst && (
@@ -164,11 +166,11 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
               >
                 <div className="flex items-center gap-1.5 text-xs text-indigo-600 mb-1">
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>推奨</span>
+                  <span>{t('runoffModal.recommendedBadge')}</span>
                 </div>
-                <div className="text-xs font-semibold">同率1位のみ</div>
+                <div className="text-xs font-semibold">{t('runoffModal.tiedOnlyTitle')}</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">
-                  {summary.tiedFirstOptions.length}件の同率候補
+                  {t('runoffModal.tiedCandidatesDesc', { count: summary.tiedFirstOptions.length })}
                 </div>
               </button>
             )}
@@ -184,10 +186,10 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
             >
               <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
                 <Layers className="w-3.5 h-3.5" />
-                <span>上位2件</span>
+                <span>{t('runoffModal.topKBadge', { k: 2 })}</span>
               </div>
-              <div className="text-xs font-semibold">TOP 2 決選</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">上位2候補に絞り込み</div>
+              <div className="text-xs font-semibold">{t('runoffModal.topKTitle', { k: 2 })}</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">{t('runoffModal.topKDesc', { k: 2 })}</div>
             </button>
 
             <button
@@ -201,10 +203,10 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
             >
               <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
                 <Users className="w-3.5 h-3.5" />
-                <span>自由選択</span>
+                <span>{t('runoffModal.customBadge')}</span>
               </div>
-              <div className="text-xs font-semibold">カスタム選択</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">候補を手動でチェック</div>
+              <div className="text-xs font-semibold">{t('runoffModal.customTitle')}</div>
+              <div className="text-[10px] text-slate-500 mt-0.5">{t('runoffModal.customDesc')}</div>
             </button>
           </div>
         </div>
@@ -213,9 +215,9 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-xs font-bold text-slate-700">
-              決選投票に含まれる候補 ({selectedCandidateIds.length}件選択中)
+              {t('runoffModal.selectedCandidatesLabel', { count: selectedCandidateIds.length })}
             </label>
-            <span className="text-[11px] text-slate-500">クリックして追加/除外</span>
+            <span className="text-[11px] text-slate-500">{t('runoffModal.clickToToggle')}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 bg-slate-50 rounded-xl border border-slate-200">
@@ -246,7 +248,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
                   />
                   <span className="flex-1 truncate">{r.option.text}</span>
                   <span className="text-[10px] text-slate-400 shrink-0">
-                    前回: {r.votesCount}票 ({r.rank}位)
+                    {t('runoffModal.previousStats', { votes: r.votesCount, rank: r.rank })}
                   </span>
                 </div>
               );
@@ -258,7 +260,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
         <div className="space-y-3 pt-2 border-t border-slate-100">
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
-              決選投票のタイトル
+              {t('runoffModal.roundTitleLabel')}
             </label>
             <input
               type="text"
@@ -271,7 +273,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">開始日時</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">{t('create.startDate')}</label>
               <input
                 type="datetime-local"
                 required
@@ -281,7 +283,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">終了日時</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">{t('create.endDate')}</label>
               <input
                 type="datetime-local"
                 required
@@ -294,19 +296,19 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
 
           <div>
             <label className="block text-xs font-medium text-slate-700 mb-1">
-              1人あたりの選択可能上限数
+              {t('create.maxChoicesLabel')}
             </label>
             <select
               value={maxChoices}
               onChange={e => setMaxChoices(Number(e.target.value))}
               className="w-full text-sm px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium shadow-sm"
             >
-              <option value={1}>1つだけ選択 (単一投票 - 決選推奨)</option>
+              <option value={1}>{t('runoffModal.singleChoiceOption')}</option>
               {selectedCandidateIds.length > 2 && (
-                <option value={2}>最大 2つまで選択</option>
+                <option value={2}>{t('create.multiChoiceOption', { count: 2 })}</option>
               )}
               {selectedCandidateIds.length > 3 && (
-                <option value={3}>最大 3つまで選択</option>
+                <option value={3}>{t('create.multiChoiceOption', { count: 3 })}</option>
               )}
             </select>
           </div>
@@ -315,7 +317,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
         {/* Submit Buttons */}
         <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
           <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
-            キャンセル
+            {t('common.cancel')}
           </Button>
           <Button
             type="submit"
@@ -324,7 +326,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
             isLoading={isSubmitting}
             leftIcon={<Swords className="w-4 h-4" />}
           >
-            第{nextRoundNumber}回 決選投票を開始
+            {t('runoffModal.submitRunoffBtn', { round: nextRoundNumber })}
           </Button>
         </div>
       </form>

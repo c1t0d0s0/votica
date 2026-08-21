@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useTranslation } from '../contexts/LanguageContext';
 import {
   subscribePoll,
   subscribeRound,
@@ -39,6 +40,7 @@ export const PollVotingPage: React.FC = () => {
   const { pollId } = useParams<{ pollId: string }>();
   const { currentUser, signInWithGoogle } = useAuth();
   const { showToast } = useToast();
+  const { t, language } = useTranslation();
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [allRounds, setAllRounds] = useState<PollRound[]>([]);
@@ -181,7 +183,7 @@ export const PollVotingPage: React.FC = () => {
     return (
       <div className="max-w-3xl mx-auto px-4 py-24 text-center">
         <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-sm font-semibold text-slate-500">投票データを読み込み中...</p>
+        <p className="text-sm font-semibold text-slate-500">{t('voting.pollLoading')}</p>
       </div>
     );
   }
@@ -190,13 +192,13 @@ export const PollVotingPage: React.FC = () => {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center bg-white rounded-3xl border border-slate-200 p-8 mt-8 shadow-sm">
         <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-        <h2 className="text-xl font-bold text-slate-800">投票が見つかりませんでした</h2>
+        <h2 className="text-xl font-bold text-slate-800">{t('voting.pollNotFound')}</h2>
         <p className="text-xs text-slate-500 mt-2 mb-6">
-          指定されたIDの投票が存在しないか、削除された可能性があります。
+          {t('voting.pollNotFoundDesc')}
         </p>
         <Link to="/">
           <Button variant="primary" size="sm">
-            トップページへ戻る
+            {t('common.backToHome')}
           </Button>
         </Link>
       </div>
@@ -225,7 +227,7 @@ export const PollVotingPage: React.FC = () => {
       setSelectedOptionIds(prev => prev.filter(id => id !== optionId));
     } else {
       if (selectedOptionIds.length >= currentRoundData.maxChoices) {
-        showToast('warning', `選択できるのは最大 ${currentRoundData.maxChoices} つまでです`);
+        showToast('warning', t('voting.toastMaxChoicesExceeded', { max: currentRoundData.maxChoices }));
         return;
       }
       setSelectedOptionIds(prev => [...prev, optionId]);
@@ -235,13 +237,13 @@ export const PollVotingPage: React.FC = () => {
   // Submit Vote
   const handleVoteSubmit = async () => {
     if (!currentUser && !isAnonymousAllowed) {
-      showToast('error', '投票するにはGoogleログインが必要です');
+      showToast('error', t('voting.toastLoginRequired'));
       return;
     }
 
     if (!currentUser && isAnonymousAllowed) {
       if (!anonName.trim()) {
-        showToast('error', '投票者のお名前（自己申告）を入力してください');
+        showToast('error', t('voting.toastNameRequired'));
         return;
       }
       try {
@@ -250,17 +252,17 @@ export const PollVotingPage: React.FC = () => {
     }
 
     if (!isVotingOpen) {
-      showToast('error', 'この投票ラウンドの受付期間は終了しています');
+      showToast('error', t('voting.toastVotingClosed'));
       return;
     }
 
     if (selectedOptionIds.length === 0) {
-      showToast('error', '投票する選択肢を1つ以上選んでください');
+      showToast('error', t('voting.toastSelectOption'));
       return;
     }
 
     if (selectedOptionIds.length > currentRoundData.maxChoices) {
-      showToast('error', `選択できるのは最大 ${currentRoundData.maxChoices} つまでです`);
+      showToast('error', t('voting.toastMaxChoicesExceeded', { max: currentRoundData.maxChoices }));
       return;
     }
 
@@ -268,7 +270,7 @@ export const PollVotingPage: React.FC = () => {
       setIsSubmitting(true);
       const voterUid = currentUser ? currentUser.uid : anonUid;
       const voterName = currentUser
-        ? currentUser.displayName || 'Googleユーザー'
+        ? currentUser.displayName || t('common.googleUser')
         : anonName.trim();
       const votePayload: Omit<Vote, 'id' | 'votedAt'> = {
         userId: voterUid,
@@ -290,10 +292,10 @@ export const PollVotingPage: React.FC = () => {
         });
       } catch {}
 
-      showToast('success', userVote ? '投票内容を更新しました！' : '投票が完了しました！');
+      showToast('success', userVote ? t('voting.toastVoteUpdated') : t('voting.toastVoteSuccess'));
     } catch (err: any) {
       console.error('Vote failed:', err);
-      showToast('error', '投票の送信に失敗しました: ' + (err.message || ''));
+      showToast('error', t('voting.toastVoteFailed') + (err.message || ''));
     } finally {
       setIsSubmitting(false);
     }
@@ -307,35 +309,35 @@ export const PollVotingPage: React.FC = () => {
           {poll.status === 'closed' ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              投票決着・終了 (全{poll.totalRounds}回)
+              {t('voting.pollConcluded', { total: poll.totalRounds })}
             </span>
           ) : poll.totalRounds > 1 ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-pink-100 text-pink-800 border border-pink-200">
               <Swords className="w-3.5 h-3.5 text-pink-600" />
-              第{poll.currentRound}回 決選投票進行中 (全{poll.totalRounds}ラウンド)
+              {t('voting.runoffInProgress', { round: poll.currentRound, total: poll.totalRounds })}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
               <VoteIcon className="w-3.5 h-3.5" />
-              第1回 投票
+              {t('voting.round1')}
             </span>
           )}
 
           {isAnonymousAllowed ? (
             <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
               <Globe className="w-3 h-3 text-emerald-600" />
-              ログイン不要 (名前自己申告)
+              {t('voting.noLoginAllowed')}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
               <ShieldCheck className="w-3 h-3 text-slate-500" />
-              Googleログイン必須 (1人1票)
+              {t('voting.loginRequired')}
             </span>
           )}
 
           {isAdmin && (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
-              管理者
+              {t('voting.adminBadge')}
             </span>
           )}
         </div>
@@ -347,7 +349,7 @@ export const PollVotingPage: React.FC = () => {
             onClick={() => setIsShareModalOpen(true)}
             leftIcon={<Share2 className="w-3.5 h-3.5" />}
           >
-            共有
+            {t('voting.shareBtn')}
           </Button>
 
           {(isAdmin || poll.isPublicResult) && (
@@ -357,7 +359,7 @@ export const PollVotingPage: React.FC = () => {
                 size="sm"
                 leftIcon={<BarChart3 className="w-3.5 h-3.5 text-indigo-400" />}
               >
-                {isAdmin ? '管理・集計結果' : '集計結果'}
+                {isAdmin ? t('voting.adminResultsBtn') : t('voting.resultsBtn')}
               </Button>
             </Link>
           )}
@@ -379,11 +381,11 @@ export const PollVotingPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
-              {currentRoundData.title || `第${currentRoundData.roundNumber}回 投票`}
+              {currentRoundData.title || t('voting.roundN', { round: currentRoundData.roundNumber })}
             </span>
             {currentRoundData.runoffSourceRound && (
               <span className="text-[11px] text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md font-medium">
-                第{currentRoundData.runoffSourceRound}回からの決選
+                {t('voting.runoffFromRound', { round: currentRoundData.runoffSourceRound })}
               </span>
             )}
           </div>
@@ -410,8 +412,8 @@ export const PollVotingPage: React.FC = () => {
             <Layers className="w-3.5 h-3.5 text-slate-400" />
             <span>
               {isSingleChoice
-                ? '【単一選択】1つだけ選択'
-                : `【複数選択】最大 ${currentRoundData.maxChoices} つまで選択可能`}
+                ? t('voting.singleChoiceHint')
+                : t('voting.multiChoiceHint', { max: currentRoundData.maxChoices })}
             </span>
           </div>
         </div>
@@ -425,7 +427,7 @@ export const PollVotingPage: React.FC = () => {
               <div className="flex items-center gap-2.5 text-xs font-semibold">
                 <Swords className="w-4 h-4 text-pink-600 shrink-0" />
                 <span>
-                  第{viewRoundNumber}回の投票は終了しました。現在、最新の決選投票（第{poll.currentRound}回）が進行中です。
+                  {t('voting.roundEndedRunoffActive', { round: viewRoundNumber, current: poll.currentRound })}
                 </span>
               </div>
               <Button
@@ -434,7 +436,7 @@ export const PollVotingPage: React.FC = () => {
                 onClick={() => setViewRoundNumber(poll.currentRound)}
                 className="shrink-0 text-xs w-full sm:w-auto"
               >
-                第{poll.currentRound}回 決選投票へ移動
+                {t('voting.goToCurrentRunoff', { round: poll.currentRound })}
               </Button>
             </div>
           ) : summary?.hasTieForFirst ? (
@@ -442,8 +444,10 @@ export const PollVotingPage: React.FC = () => {
               <div className="flex items-start sm:items-center gap-2.5 text-xs font-semibold">
                 <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
                 <span>
-                  投票期間が終了し、同率1位（{summary.tiedFirstOptions.map(t => `「${t.option.text}」`).join(' と ')}）が検出されました。
-                  {!isAdmin ? ' 管理者が決選投票を開始するまでお待ちください。' : ' 決選投票を開始してください。'}
+                  {t('voting.tieDetectedMsg', {
+                    names: summary.tiedFirstOptions.map(tOpt => `「${tOpt.option.text}」`).join(language === 'ja' ? ' と ' : ' & ')
+                  })}
+                  {!isAdmin ? t('voting.tieWaitAdmin') : t('voting.tieStartAdmin')}
                 </span>
               </div>
               {isAdmin && (
@@ -454,7 +458,7 @@ export const PollVotingPage: React.FC = () => {
                   leftIcon={<Swords className="w-4 h-4" />}
                   className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-200 shrink-0 text-xs w-full sm:w-auto"
                 >
-                  決選投票を開始
+                  {t('voting.startRunoffBtn')}
                 </Button>
               )}
             </div>
@@ -463,13 +467,16 @@ export const PollVotingPage: React.FC = () => {
               <div className="flex items-center gap-2.5 text-xs font-semibold">
                 <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>
-                  投票期間が終了しました。第1位: 「{summary.winner.option.text}」({summary.winner.votesCount}票)
+                  {t('voting.winnerDetectedMsg', {
+                    name: summary.winner.option.text,
+                    votes: summary.winner.votesCount,
+                  })}
                 </span>
               </div>
               {(isAdmin || poll.isPublicResult) && (
                 <Link to={`/poll/${poll.id}/results`}>
                   <Button variant="outline" size="sm" className="shrink-0 text-xs">
-                    詳細結果を見る
+                    {t('voting.viewDetailResults')}
                   </Button>
                 </Link>
               )}
@@ -477,7 +484,7 @@ export const PollVotingPage: React.FC = () => {
           ) : (
             <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-600 font-semibold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-slate-400 shrink-0" />
-              <span>このラウンドの投票受付は終了しました。</span>
+              <span>{t('voting.votingClosedBanner')}</span>
             </div>
           )}
         </>
@@ -487,15 +494,18 @@ export const PollVotingPage: React.FC = () => {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <span>選択肢</span>
+            <span>{t('voting.optionsTitle')}</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              全 {currentRoundData.options.length} 件
+              {t('voting.totalOptionsCount', { count: currentRoundData.options.length })}
             </span>
           </h3>
 
           {!isSingleChoice && isVotingOpen && (
             <span className="text-xs font-bold text-indigo-600">
-              選択中: {selectedOptionIds.length} / {currentRoundData.maxChoices} 件
+              {t('voting.selectedOptionsCount', {
+                selected: selectedOptionIds.length,
+                max: currentRoundData.maxChoices,
+              })}
             </span>
           )}
         </div>
@@ -532,12 +542,12 @@ export const PollVotingPage: React.FC = () => {
           {currentUser ? (
             <div>
               <span className="font-semibold text-slate-900">
-                {currentUser.displayName} としてログイン中
+                {t('voting.loggedInAs', { name: currentUser.displayName || t('common.user') })}
               </span>
               {userVote && (
                 <div className="flex items-center gap-1.5 text-emerald-600 font-bold mt-0.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>このラウンドに投票済み ({userVote.selectedOptionIds.length}件選択)</span>
+                  <span>{t('voting.votedInRound', { count: userVote.selectedOptionIds.length })}</span>
                 </div>
               )}
             </div>
@@ -545,7 +555,7 @@ export const PollVotingPage: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
               <div className="w-full sm:w-60 text-left">
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  投票者のお名前 (自己申告) <span className="text-rose-500">*</span>
+                  {t('voting.anonNameLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -557,21 +567,21 @@ export const PollVotingPage: React.FC = () => {
                       localStorage.setItem('votica_anon_name', e.target.value);
                     } catch {}
                   }}
-                  placeholder="例: 田中 / ゲスト"
+                  placeholder={t('voting.anonNamePlaceholder')}
                   className="w-full text-xs px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm font-medium"
                 />
               </div>
               {userVote && (
                 <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs shrink-0">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>投票済み ({userVote.selectedOptionIds.length}件選択)</span>
+                  <span>{t('voting.anonVoted', { count: userVote.selectedOptionIds.length })}</span>
                 </div>
               )}
             </div>
           ) : (
             <div className="flex items-center gap-2 text-slate-500">
               <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-              <span>投票するにはGoogleログインが必要です (1人1票を保証)</span>
+              <span>{t('voting.googleLoginPrompt')}</span>
             </div>
           )}
         </div>
@@ -592,12 +602,12 @@ export const PollVotingPage: React.FC = () => {
               className="w-full sm:w-auto px-8 shadow-md"
             >
               {isVotingClosed
-                ? '受付終了'
+                ? t('voting.statusClosed')
                 : isVotingScheduled
-                ? '開始前'
+                ? t('voting.statusScheduled')
                 : userVote
-                ? '投票内容を変更して再投票'
-                : '投票を送信する'}
+                ? t('voting.btnUpdateVote')
+                : t('voting.btnSubmitVote')}
             </Button>
           ) : (
             <Button
@@ -607,7 +617,7 @@ export const PollVotingPage: React.FC = () => {
               leftIcon={<LogIn className="w-4 h-4" />}
               className="w-full sm:w-auto px-8"
             >
-              Googleでログインして投票
+              {t('voting.btnSignInAndVote')}
             </Button>
           )}
         </div>

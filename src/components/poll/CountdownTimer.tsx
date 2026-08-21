@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Clock, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from '../../contexts/LanguageContext';
 
 interface CountdownTimerProps {
   startDate: string;
@@ -12,6 +13,7 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   endDate,
   onStatusChange,
 }) => {
+  const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -42,11 +44,13 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
 
+  const daysText = days > 0 ? `${days}${t('timer.days')}` : '';
+
   if (isClosed) {
     return (
       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold">
         <CheckCircle2 className="w-4 h-4 text-slate-500" />
-        <span>投票期間終了 (締め切り済み)</span>
+        <span>{t('timer.ended')}</span>
       </div>
     );
   }
@@ -56,7 +60,7 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold">
         <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
         <span>
-          開始まであと: {days > 0 && `${days}日 `}
+          {t('timer.startsIn')} {daysText}
           {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:
           {String(seconds).padStart(2, '0')}
         </span>
@@ -72,7 +76,7 @@ export const CountdownTimer: React.FC<CountdownTimerProps> = ({
       </span>
       <Clock className="w-4 h-4 text-emerald-600" />
       <span>
-        投票受付中 (残り: {days > 0 && `${days}日 `}
+        {t('timer.openRemaining')} {daysText}
         {String(hours).padStart(2, '0')}:{String(minutes).padStart(2, '0')}:
         {String(seconds).padStart(2, '0')})
       </span>

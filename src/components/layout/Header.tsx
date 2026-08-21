@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from '../../contexts/LanguageContext';
 import { Button } from '../common/Button';
 import { FirebaseConfigModal } from '../common/FirebaseConfigModal';
 import {
@@ -11,10 +12,12 @@ import {
   Settings,
   User as UserIcon,
   ShieldCheck,
+  Globe,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { currentUser, isFirebaseConfigured, signInWithGoogle, signInAsDemoUser, logout } = useAuth();
+  const { t, language, toggleLanguage } = useTranslation();
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -41,13 +44,24 @@ export const Header: React.FC = () => {
                 Votica
               </span>
               <span className="hidden sm:inline-block ml-2 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                決選投票対応
+                {t('common.runoffBadge')}
               </span>
             </div>
           </Link>
 
           {/* Right Navigation */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Language Switcher */}
+            <button
+              onClick={toggleLanguage}
+              title={t('header.languageSwitch')}
+              aria-label={t('header.languageSwitch')}
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
+            >
+              <Globe className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{language === 'ja' ? 'EN' : '日本語'}</span>
+            </button>
+
             {/* Create Poll Button */}
             <Link to="/create">
               <Button
@@ -56,7 +70,7 @@ export const Header: React.FC = () => {
                 leftIcon={<PlusCircle className="w-4 h-4" />}
                 className="hidden sm:inline-flex shadow-sm"
               >
-                投票を作成
+                {t('common.createPoll')}
               </Button>
             </Link>
 
@@ -64,7 +78,7 @@ export const Header: React.FC = () => {
             {isLocalEnvironment && (
               <button
                 onClick={() => setIsConfigModalOpen(true)}
-                title={isFirebaseConfigured ? 'Firebase接続中 (設定を確認)' : 'ローカルデモ動作中 (Firebase設定)'}
+                title={isFirebaseConfigured ? t('header.firebaseConnected') : t('header.demoMode')}
                 className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition-colors ${
                   isFirebaseConfigured
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
@@ -89,7 +103,7 @@ export const Header: React.FC = () => {
                   {currentUser.photoURL ? (
                     <img
                       src={currentUser.photoURL}
-                      alt={currentUser.displayName || 'ユーザー'}
+                      alt={currentUser.displayName || t('common.user')}
                       className="w-7 h-7 rounded-full object-cover ring-1 ring-indigo-500"
                     />
                   ) : (
@@ -98,7 +112,7 @@ export const Header: React.FC = () => {
                     </div>
                   )}
                   <span className="text-xs font-medium text-slate-700 max-w-[90px] truncate hidden sm:inline">
-                    {currentUser.displayName || 'ユーザー'}
+                    {currentUser.displayName || t('common.user')}
                   </span>
                 </button>
 
@@ -115,7 +129,7 @@ export const Header: React.FC = () => {
                           {currentUser.displayName}
                         </p>
                         <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                          {currentUser.email || 'Googleログイン済み'}
+                          {currentUser.email || t('header.googleSignedIn')}
                         </p>
                       </div>
 
@@ -125,7 +139,7 @@ export const Header: React.FC = () => {
                         className="flex items-center gap-2 px-4 py-2 text-xs text-slate-700 hover:bg-slate-50 transition-colors"
                       >
                         <UserIcon className="w-4 h-4 text-slate-400" />
-                        マイ投票ダッシュボード
+                        {t('header.myDashboard')}
                       </Link>
 
                       <Link
@@ -134,7 +148,7 @@ export const Header: React.FC = () => {
                         className="flex items-center gap-2 px-4 py-2 text-xs text-indigo-600 hover:bg-indigo-50 font-medium transition-colors sm:hidden"
                       >
                         <PlusCircle className="w-4 h-4" />
-                        新しい投票を作成
+                        {t('header.createNewPoll')}
                       </Link>
 
                       <button
@@ -145,7 +159,7 @@ export const Header: React.FC = () => {
                         className="w-full flex items-center gap-2 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
-                        ログアウト
+                        {t('header.logout')}
                       </button>
                     </div>
                   </>
@@ -159,7 +173,7 @@ export const Header: React.FC = () => {
                   leftIcon={<LogIn className="w-4 h-4 text-indigo-600" />}
                   onClick={signInWithGoogle}
                 >
-                  <span className="hidden sm:inline">Googleで</span>ログイン
+                  {t('header.signInWithGoogle')}
                 </Button>
                 {!isFirebaseConfigured && (
                   <Button
@@ -168,7 +182,7 @@ export const Header: React.FC = () => {
                     onClick={() => signInAsDemoUser()}
                     className="text-xs text-slate-500 hover:text-slate-800"
                   >
-                    デモ体験
+                    {t('header.tryDemo')}
                   </Button>
                 )}
               </div>
