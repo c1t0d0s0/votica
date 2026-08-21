@@ -54,7 +54,12 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
   // Dates
   const now = new Date();
   const defaultEnd = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours later
-  const formatInputDate = (d: Date) => d.toISOString().slice(0, 16);
+  const formatInputDate = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+      d.getHours()
+    )}:${pad(d.getMinutes())}`;
+  };
 
   const [startDate, setStartDate] = useState(formatInputDate(now));
   const [endDate, setEndDate] = useState(formatInputDate(defaultEnd));

@@ -258,11 +258,14 @@ export const PollResultsPage: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
             <div>
               現在のラウンド: <span className="text-white font-bold">{currentRoundData.title}</span> (
-              {currentRoundData.status === 'open' ? '受付中' : '終了'})
+              {currentRoundData.status === 'open' && Date.now() <= new Date(currentRoundData.endDate).getTime()
+                ? '受付中'
+                : '終了 / 締め切り済み'}
+              )
             </div>
 
             <div className="flex items-center gap-2">
-              {currentRoundData.status === 'open' ? (
+              {currentRoundData.status === 'open' && Date.now() <= new Date(currentRoundData.endDate).getTime() ? (
                 <button
                   onClick={handleCloseRound}
                   className="text-xs text-rose-400 hover:text-rose-300 font-semibold underline underline-offset-2"

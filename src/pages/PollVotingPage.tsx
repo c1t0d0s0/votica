@@ -6,13 +6,16 @@ import {
   subscribePoll,
   subscribeRound,
   subscribeUserVote,
+  subscribeRoundVotes,
   subscribeAllRounds,
   castVote,
 } from '../lib/firestoreService';
-import { Poll, PollRound, Vote } from '../lib/types';
+import { Poll, PollRound, Vote, RoundResultSummary } from '../lib/types';
+import { calculateRoundResults } from '../lib/runoffUtils';
 import { VoteOptionCard } from '../components/poll/VoteOptionCard';
 import { CountdownTimer } from '../components/poll/CountdownTimer';
 import { ShareModal } from '../components/poll/ShareModal';
+import { RunoffWizardModal } from '../components/poll/RunoffWizardModal';
 import { RoundSelector } from '../components/results/RoundSelector';
 import { Button } from '../components/common/Button';
 import {
@@ -23,6 +26,8 @@ import {
   CheckCircle2,
   LogIn,
   AlertCircle,
+  AlertTriangle,
+  Trophy,
   Layers,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -37,11 +42,21 @@ export const PollVotingPage: React.FC = () => {
   const [viewRoundNumber, setViewRoundNumber] = useState<number>(1);
   const [currentRoundData, setCurrentRoundData] = useState<PollRound | null>(null);
   const [userVote, setUserVote] = useState<Vote | null>(null);
+  const [roundVotes, setRoundVotes] = useState<Vote[]>([]);
+  const [summary, setSummary] = useState<RoundResultSummary | null>(null);
 
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isRunoffModalOpen, setIsRunoffModalOpen] = useState(false);
   const [pollLoading, setPollLoading] = useState(true);
+
+  // Live timer tick so deadline triggers immediately
+  const [nowMs, setNowMs] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Subscribe to poll
   useEffect(() => {
@@ -74,8 +89,22 @@ export const PollVotingPage: React.FC = () => {
       setCurrentRoundData(r);
     });
 
-    return () => unsubRound();
+    const unsubVotes = subscribeRoundVotes(pollId, viewRoundNumber, votes => {
+      setRoundVotes(votes);
+    });
+
+    return () => {
+      unsubRound();
+      unsubVotes();
+    };
   }, [pollId, viewRoundNumber]);
+
+  // Compute summary on round or votes update
+  useEffect(() => {
+    if (currentRoundData) {
+      setSummary(calculateRoundResults(currentRoundData, roundVotes));
+    }
+  }, [currentRoundData, roundVotes]);
 
   // Subscribe to the current user's vote in this view round
   useEffect(() => {
@@ -125,7 +154,7 @@ export const PollVotingPage: React.FC = () => {
 
   const isAdmin = currentUser?.uid === poll.creatorUid;
   const isSingleChoice = currentRoundData.maxChoices === 1;
-  const nowMs = Date.now();
+
   const startMs = new Date(currentRoundData.startDate).getTime();
   const endMs = new Date(currentRoundData.endDate).getTime();
   const isVotingOpen = nowMs >= startMs && nowMs <= endMs && currentRoundData.status === 'open';
@@ -156,6 +185,11 @@ export const PollVotingPage: React.FC = () => {
   const handleVoteSubmit = async () => {
     if (!currentUser) {
       showToast('error', '投票するにはGoogleログインが必要です');
+      return;
+    }
+
+    if (!isVotingOpen) {
+      showToast('error', 'この投票ラウンドの受付期間は終了しています');
       return;
     }
 
@@ -297,6 +331,72 @@ export const PollVotingPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Round Status Banner when Closed or Progressing */}
+      {isVotingClosed && (
+        <>
+          {poll.totalRounds > viewRoundNumber ? (
+            <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-indigo-950">
+              <div className="flex items-center gap-2.5 text-xs font-semibold">
+                <Swords className="w-4 h-4 text-pink-600 shrink-0" />
+                <span>
+                  第{viewRoundNumber}回の投票は終了しました。現在、最新の決選投票（第{poll.currentRound}回）が進行中です。
+                </span>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setViewRoundNumber(poll.currentRound)}
+                className="shrink-0 text-xs w-full sm:w-auto"
+              >
+                第{poll.currentRound}回 決選投票へ移動
+              </Button>
+            </div>
+          ) : summary?.hasTieForFirst ? (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950">
+              <div className="flex items-start sm:items-center gap-2.5 text-xs font-semibold">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0" />
+                <span>
+                  投票期間が終了し、同率1位（{summary.tiedFirstOptions.map(t => `「${t.option.text}」`).join(' と ')}）が検出されました。
+                  {!isAdmin ? ' 管理者が決選投票を開始するまでお待ちください。' : ' 決選投票を開始してください。'}
+                </span>
+              </div>
+              {isAdmin && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsRunoffModalOpen(true)}
+                  leftIcon={<Swords className="w-4 h-4" />}
+                  className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-amber-200 shrink-0 text-xs w-full sm:w-auto"
+                >
+                  決選投票を開始
+                </Button>
+              )}
+            </div>
+          ) : summary?.winner ? (
+            <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 text-emerald-950">
+              <div className="flex items-center gap-2.5 text-xs font-semibold">
+                <Trophy className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>
+                  投票期間が終了しました。第1位: 「{summary.winner.option.text}」({summary.winner.votesCount}票)
+                </span>
+              </div>
+              {(isAdmin || poll.isPublicResult) && (
+                <Link to={`/poll/${poll.id}/results`}>
+                  <Button variant="outline" size="sm" className="shrink-0 text-xs">
+                    詳細結果を見る
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-2xl bg-slate-100 border border-slate-200 text-xs text-slate-600 font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-slate-400 shrink-0" />
+              <span>このラウンドの投票受付は終了しました。</span>
+            </div>
+          )}
+        </>
+      )}
+
       {/* Voting Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -307,7 +407,7 @@ export const PollVotingPage: React.FC = () => {
             </span>
           </h3>
 
-          {!isSingleChoice && (
+          {!isSingleChoice && isVotingOpen && (
             <span className="text-xs font-bold text-indigo-600">
               選択中: {selectedOptionIds.length} / {currentRoundData.maxChoices} 件
             </span>
@@ -395,6 +495,21 @@ export const PollVotingPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Runoff Wizard Modal */}
+      {summary && (
+        <RunoffWizardModal
+          isOpen={isRunoffModalOpen}
+          onClose={() => setIsRunoffModalOpen(false)}
+          pollId={poll.id}
+          previousRound={currentRoundData}
+          summary={summary}
+          nextRoundNumber={allRounds.length + 1}
+          onSuccess={newRoundNumber => {
+            setViewRoundNumber(newRoundNumber);
+          }}
+        />
+      )}
 
       {/* Share Modal */}
       <ShareModal

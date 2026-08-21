@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   setDoc,
+  getDoc,
   getDocs,
   updateDoc,
   query,
@@ -262,6 +263,7 @@ export async function castVote(
   roundNumber: number,
   vote: Omit<Vote, 'id' | 'votedAt'>
 ): Promise<void> {
+  const nowMs = Date.now();
   const nowIso = new Date().toISOString();
   const voteDocData: Vote = {
     ...vote,
@@ -270,12 +272,31 @@ export async function castVote(
   };
 
   if (!isFirebaseConfigured || !db) {
+    const rounds = getMockRounds();
+    const round = rounds[pollId]?.[roundNumber];
+    if (round) {
+      const endMs = new Date(round.endDate).getTime();
+      if (round.status === 'closed' || nowMs > endMs) {
+        throw new Error('この投票ラウンドの受付期間は終了しています');
+      }
+    }
+
     const allVotes = getMockVotes();
     if (!allVotes[pollId]) allVotes[pollId] = {};
     if (!allVotes[pollId][roundNumber]) allVotes[pollId][roundNumber] = {};
     allVotes[pollId][roundNumber][vote.userId] = voteDocData;
     saveMockVotes(allVotes);
     return;
+  }
+
+  const roundDocRef = doc(db, 'polls', pollId, 'rounds', roundNumber.toString());
+  const roundSnap = await getDoc(roundDocRef);
+  if (roundSnap.exists()) {
+    const roundData = roundSnap.data();
+    const endMs = new Date(toIsoDate(roundData.endDate)).getTime();
+    if (roundData.status === 'closed' || nowMs > endMs) {
+      throw new Error('この投票ラウンドの受付期間は終了しています');
+    }
   }
 
   const voteDocRef = doc(db, 'polls', pollId, 'rounds', roundNumber.toString(), 'votes', vote.userId);
@@ -374,6 +395,7 @@ export function subscribeRoundVotes(
 
 /**
  * Creates a Runoff Round (Round 2, 3, etc.) and updates poll.currentRound & totalRounds.
+ * Automatically closes previous round.
  */
 export async function createRunoffRound(
   pollId: string,
@@ -384,8 +406,11 @@ export async function createRunoffRound(
   const nextRound: PollRound = {
     ...newRoundData,
     roundNumber: nextRoundNumber,
+    status: 'open',
     createdAt: nowIso,
   };
+
+  const prevRoundNumber = nextRoundNumber - 1;
 
   if (!isFirebaseConfigured || !db) {
     const polls = getMockPolls();
@@ -398,10 +423,23 @@ export async function createRunoffRound(
 
     const rounds = getMockRounds();
     if (!rounds[pollId]) rounds[pollId] = {};
+    if (prevRoundNumber >= 1 && rounds[pollId][prevRoundNumber]) {
+      rounds[pollId][prevRoundNumber].status = 'closed';
+    }
     rounds[pollId][nextRoundNumber] = nextRound;
     saveMockRounds(rounds);
 
     return nextRoundNumber;
+  }
+
+  // Close previous round in Firestore
+  if (prevRoundNumber >= 1) {
+    try {
+      const prevRoundRef = doc(db, 'polls', pollId, 'rounds', prevRoundNumber.toString());
+      await updateDoc(prevRoundRef, { status: 'closed' });
+    } catch (e) {
+      console.warn('Failed to close previous round:', e);
+    }
   }
 
   const roundDocRef = doc(db, 'polls', pollId, 'rounds', nextRoundNumber.toString());
