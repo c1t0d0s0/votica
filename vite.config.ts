@@ -3,10 +3,11 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 function googleAnalyticsPlugin(gaId?: string): Plugin {
+  const trimmedGaId = gaId?.trim();
   return {
     name: 'google-analytics',
     transformIndexHtml(html) {
-      if (!gaId) return html;
+      if (!trimmedGaId) return html;
       return {
         html,
         tags: [
@@ -14,14 +15,14 @@ function googleAnalyticsPlugin(gaId?: string): Plugin {
             tag: 'script',
             attrs: {
               async: true,
-              src: `https://www.googletagmanager.com/gtag/js?id=${gaId}`,
+              src: `https://www.googletagmanager.com/gtag/js?id=${trimmedGaId}`,
             },
-            injectTo: 'head',
+            injectTo: 'head-prepend',
           },
           {
             tag: 'script',
-            children: `window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', '${gaId}');`,
-            injectTo: 'head',
+            children: `window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', '${trimmedGaId}');`,
+            injectTo: 'head-prepend',
           },
         ],
       };
@@ -32,7 +33,12 @@ function googleAnalyticsPlugin(gaId?: string): Plugin {
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const gaMeasurementId = env.VITE_GA_MEASUREMENT_ID || process.env.VITE_GA_MEASUREMENT_ID;
+  const gaMeasurementId =
+    env.VITE_GA_MEASUREMENT_ID ||
+    process.env.VITE_GA_MEASUREMENT_ID ||
+    env.GA_MEASUREMENT_ID ||
+    process.env.GA_MEASUREMENT_ID;
+
 
   return {
     plugins: [
