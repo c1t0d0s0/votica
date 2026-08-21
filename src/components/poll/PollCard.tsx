@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Poll } from '../../lib/types';
-import { Swords, Lock, Globe, ArrowRight, CheckCircle2, Trash2 } from 'lucide-react';
+import { Swords, Lock, Globe, ArrowRight, CheckCircle2, Trash2, Calendar } from 'lucide-react';
 import { useTranslation } from '../../contexts/LanguageContext';
 
 interface PollCardProps {
@@ -14,6 +14,7 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator, onDelete })
   const { t } = useTranslation();
   const isClosed = poll.status === 'closed';
   const isRunoffActive = !isClosed && poll.totalRounds > 1;
+  const isSchedule = poll.pollType === 'schedule';
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-5 hover:border-indigo-300 hover:shadow-lg transition-all flex flex-col justify-between group">
@@ -21,7 +22,12 @@ export const PollCard: React.FC<PollCardProps> = ({ poll, isCreator, onDelete })
         {/* Header badges */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {isClosed ? (
+            {isSchedule ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <Calendar className="w-3 h-3 text-indigo-600" />
+                {t('schedule.badge')}
+              </span>
+            ) : isClosed ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                 {t('voting.pollConcluded', { total: poll.totalRounds })}

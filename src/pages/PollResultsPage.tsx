@@ -13,10 +13,12 @@ import {
   updatePollStatus,
   updatePollVoterNamesVisibility,
 } from '../lib/firestoreService';
-import { Poll, PollRound, Vote, RoundResultSummary } from '../lib/types';
+import { Poll, PollRound, Vote, RoundResultSummary, ScheduleResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
+import { calculateScheduleResults } from '../lib/scheduleUtils';
 import { ResultBarChart } from '../components/results/ResultBarChart';
 import { WinnerBadge } from '../components/results/WinnerBadge';
+import { ScheduleResultMatrix } from '../components/schedule/ScheduleResultMatrix';
 import { RoundSelector } from '../components/results/RoundSelector';
 import { RunoffWizardModal } from '../components/poll/RunoffWizardModal';
 import { ShareModal } from '../components/poll/ShareModal';
@@ -34,6 +36,7 @@ import {
   CheckCircle2,
   Users,
   Trash2,
+  Calendar,
 } from 'lucide-react';
 
 export const PollResultsPage: React.FC = () => {
@@ -49,6 +52,7 @@ export const PollResultsPage: React.FC = () => {
   const [currentRoundData, setCurrentRoundData] = useState<PollRound | null>(null);
   const [roundVotes, setRoundVotes] = useState<Vote[]>([]);
   const [summary, setSummary] = useState<RoundResultSummary | null>(null);
+  const [scheduleSummary, setScheduleSummary] = useState<ScheduleResultSummary | null>(null);
 
   const [isRunoffModalOpen, setIsRunoffModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -98,16 +102,22 @@ export const PollResultsPage: React.FC = () => {
     };
   }, [pollId, selectedRoundNumber]);
 
+  const isScheduleMode = poll?.pollType === 'schedule';
+
   // Compute summary on round or votes update
   useEffect(() => {
     if (currentRoundData) {
-      setSummary(calculateRoundResults(currentRoundData, roundVotes));
+      if (poll?.pollType === 'schedule') {
+        setScheduleSummary(calculateScheduleResults(currentRoundData, roundVotes));
+      } else {
+        setSummary(calculateRoundResults(currentRoundData, roundVotes));
+      }
     }
-  }, [currentRoundData, roundVotes]);
+  }, [currentRoundData, roundVotes, poll?.pollType]);
 
-  // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed
+  // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed (for standard poll)
   useEffect(() => {
-    if (!poll || !currentRoundData || !summary) return;
+    if (!poll || !currentRoundData || !summary || poll.pollType === 'schedule') return;
     if (poll.status === 'closed') return;
     if (currentRoundData.roundNumber !== poll.totalRounds) return;
 
@@ -400,10 +410,17 @@ export const PollResultsPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
-              {currentRoundData.title || t('results.resultsTitle', { round: currentRoundData.roundNumber })}
+              {isScheduleMode
+                ? t('schedule.resultsTitle')
+                : currentRoundData.title || t('results.resultsTitle', { round: currentRoundData.roundNumber })}
             </span>
             <span className="text-xs text-slate-400">{t('results.realtimeUpdate')}</span>
-            {poll.showVoterNames ? (
+            {isScheduleMode ? (
+              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                <Calendar className="w-3 h-3 inline mr-1" />
+                {t('schedule.badge')}
+              </span>
+            ) : poll.showVoterNames ? (
               <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
                 {t('results.namedVotingBadge')}
               </span>
@@ -416,24 +433,43 @@ export const PollResultsPage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             {poll.title}
           </h1>
+          {poll.description && (
+            <p className="text-sm text-slate-600 mt-2 leading-relaxed whitespace-pre-wrap">
+              {poll.description}
+            </p>
+          )}
         </div>
 
-        {/* Tie Detection / Winner Celebratory Banner */}
-        {summary && (
-          <WinnerBadge
-            summary={summary}
-            isAdmin={isAdmin}
-            onOpenRunoffModal={() => setIsRunoffModalOpen(true)}
-            isPollClosed={
-              poll.status === 'closed' ||
-              currentRoundData.status === 'closed' ||
-              Date.now() > new Date(currentRoundData.endDate).getTime()
-            }
-          />
-        )}
+        {isScheduleMode ? (
+          /* Schedule Matrix Results */
+          scheduleSummary && (
+            <ScheduleResultMatrix
+              poll={poll}
+              round={currentRoundData}
+              summary={scheduleSummary}
+            />
+          )
+        ) : (
+          /* Standard Voting Results */
+          <>
+            {/* Tie Detection / Winner Celebratory Banner */}
+            {summary && (
+              <WinnerBadge
+                summary={summary}
+                isAdmin={isAdmin}
+                onOpenRunoffModal={() => setIsRunoffModalOpen(true)}
+                isPollClosed={
+                  poll.status === 'closed' ||
+                  currentRoundData.status === 'closed' ||
+                  Date.now() > new Date(currentRoundData.endDate).getTime()
+                }
+              />
+            )}
 
-        {/* Results Bar Chart */}
-        {summary && <ResultBarChart summary={summary} showVoterNames={poll.showVoterNames} />}
+            {/* Results Bar Chart */}
+            {summary && <ResultBarChart summary={summary} showVoterNames={poll.showVoterNames} />}
+          </>
+        )}
       </div>
 
       {/* Runoff Wizard Modal */}

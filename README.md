@@ -8,6 +8,7 @@ A versatile voting web application built for GitHub Pages + Firebase (Authentica
 
 ## 🌟 Key Features
 
+- **Schedule Adjustment Mode (Chouseisan-Style Matrix)**: Create date/time coordination polls for team meetings or parties where participants can respond with ◯ (Available), △ (Maybe), ✗ (Unavailable), and ？ (Pending). No login required for participants, with real-time attendance matrix tables.
 - **Multi-Round Runoff Voting**: Easily conduct successive runoff voting rounds (Round 2, Round 3, etc.) by extracting top candidates or tied winners.
 - **Automatic Tie Detection**: Automatically alerts the administrator when a round ends in a tie for 1st place, allowing one-click runoff round creation.
 - **Strict One-Vote-Per-Person Guarantee**: Powered by Firebase Authentication (Google Sign-In) and Firestore document security keyed by UID to prevent duplicate votes.

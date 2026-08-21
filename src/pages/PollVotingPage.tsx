@@ -12,9 +12,12 @@ import {
   castVote,
   updatePollStatus,
 } from '../lib/firestoreService';
-import { Poll, PollRound, Vote, RoundResultSummary } from '../lib/types';
+import { Poll, PollRound, Vote, RoundResultSummary, ScheduleChoice, ScheduleResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
+import { calculateScheduleResults } from '../lib/scheduleUtils';
 import { VoteOptionCard } from '../components/poll/VoteOptionCard';
+import { ScheduleVotingTable } from '../components/schedule/ScheduleVotingTable';
+import { ScheduleResultMatrix } from '../components/schedule/ScheduleResultMatrix';
 import { CountdownTimer } from '../components/poll/CountdownTimer';
 import { ShareModal } from '../components/poll/ShareModal';
 import { RunoffWizardModal } from '../components/poll/RunoffWizardModal';
@@ -35,6 +38,8 @@ import {
   ShieldCheck,
   Globe,
   Trash2,
+  Calendar,
+  MessageSquare,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -54,6 +59,10 @@ export const PollVotingPage: React.FC = () => {
   const [summary, setSummary] = useState<RoundResultSummary | null>(null);
 
   const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>([]);
+  const [scheduleResponses, setScheduleResponses] = useState<Record<string, ScheduleChoice>>({});
+  const [scheduleComment, setScheduleComment] = useState<string>('');
+  const [scheduleSummary, setScheduleSummary] = useState<ScheduleResultSummary | null>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isRunoffModalOpen, setIsRunoffModalOpen] = useState(false);
@@ -130,16 +139,22 @@ export const PollVotingPage: React.FC = () => {
     };
   }, [pollId, viewRoundNumber]);
 
+  const isScheduleMode = poll?.pollType === 'schedule';
+
   // Compute summary on round or votes update
   useEffect(() => {
     if (currentRoundData) {
-      setSummary(calculateRoundResults(currentRoundData, roundVotes));
+      if (poll?.pollType === 'schedule') {
+        setScheduleSummary(calculateScheduleResults(currentRoundData, roundVotes));
+      } else {
+        setSummary(calculateRoundResults(currentRoundData, roundVotes));
+      }
     }
-  }, [currentRoundData, roundVotes]);
+  }, [currentRoundData, roundVotes, poll?.pollType]);
 
-  // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed
+  // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed (for standard poll)
   useEffect(() => {
-    if (!poll || !currentRoundData || !summary) return;
+    if (!poll || !currentRoundData || !summary || poll.pollType === 'schedule') return;
     if (poll.status === 'closed') return;
     if (currentRoundData.roundNumber !== poll.totalRounds) return;
 
@@ -165,23 +180,40 @@ export const PollVotingPage: React.FC = () => {
     if (!pollId || !viewRoundNumber || !effectiveUserId) {
       setUserVote(null);
       setSelectedOptionIds([]);
+      setScheduleResponses({});
+      setScheduleComment('');
       return;
     }
 
     const unsubUserVote = subscribeUserVote(pollId, viewRoundNumber, effectiveUserId, v => {
       setUserVote(v);
       if (v) {
-        setSelectedOptionIds(v.selectedOptionIds);
+        setSelectedOptionIds(v.selectedOptionIds || []);
+        if (v.scheduleResponses) {
+          setScheduleResponses(v.scheduleResponses);
+        } else if (v.selectedOptionIds && currentRoundData) {
+          const resp: Record<string, ScheduleChoice> = {};
+          currentRoundData.options.forEach(opt => {
+            resp[opt.id] = v.selectedOptionIds.includes(opt.id) ? 'circle' : 'cross';
+          });
+          setScheduleResponses(resp);
+        }
+        if (v.comment) {
+          setScheduleComment(v.comment);
+        }
         if (v.userDisplayName && !anonName) {
           setAnonName(v.userDisplayName);
         }
       } else {
         setSelectedOptionIds([]);
+        // Default initialize schedule responses with empty or undefined
+        setScheduleResponses({});
+        setScheduleComment('');
       }
     });
 
     return () => unsubUserVote();
-  }, [pollId, viewRoundNumber, effectiveUserId]);
+  }, [pollId, viewRoundNumber, effectiveUserId, currentRoundData]);
 
   if (pollLoading) {
     return (
@@ -218,7 +250,7 @@ export const PollVotingPage: React.FC = () => {
   const isVotingScheduled = nowMs < startMs;
   const isVotingClosed = nowMs > endMs || currentRoundData.status === 'closed';
 
-  // Handle choice toggle
+  // Handle choice toggle for standard poll
   const handleToggleOption = (optionId: string) => {
     if (!isVotingOpen) return;
 
@@ -238,7 +270,26 @@ export const PollVotingPage: React.FC = () => {
     }
   };
 
-  // Submit Vote
+  // Handle schedule response change
+  const handleScheduleResponseChange = (optionId: string, choice: ScheduleChoice) => {
+    if (!isVotingOpen) return;
+    setScheduleResponses(prev => ({
+      ...prev,
+      [optionId]: choice,
+    }));
+  };
+
+  // Handle schedule batch set all
+  const handleScheduleSetAll = (choice: ScheduleChoice) => {
+    if (!isVotingOpen || !currentRoundData) return;
+    const next: Record<string, ScheduleChoice> = {};
+    currentRoundData.options.forEach(opt => {
+      next[opt.id] = choice;
+    });
+    setScheduleResponses(next);
+  };
+
+  // Submit Vote (Handles both standard poll and schedule adjustment)
   const handleVoteSubmit = async () => {
     if (!currentUser && !isAnonymousAllowed) {
       showToast('error', t('voting.toastLoginRequired'));
@@ -260,6 +311,60 @@ export const PollVotingPage: React.FC = () => {
       return;
     }
 
+    if (isScheduleMode) {
+      // For schedule adjustment, check if at least one candidate has been responded to
+      const answeredKeys = Object.keys(scheduleResponses);
+      if (answeredKeys.length === 0) {
+        showToast('error', t('schedule.toastSelectAttendance'));
+        return;
+      }
+
+      try {
+        setIsSubmitting(true);
+        const voterUid = currentUser ? currentUser.uid : anonUid;
+        const voterName = currentUser
+          ? currentUser.displayName || t('common.googleUser')
+          : anonName.trim();
+
+        // Selected option IDs as circles for compatibility
+        const circleOptionIds = Object.entries(scheduleResponses)
+          .filter(([_, choice]) => choice === 'circle')
+          .map(([id]) => id);
+
+        const votePayload: Omit<Vote, 'id' | 'votedAt'> = {
+          userId: voterUid,
+          userDisplayName: voterName,
+          selectedOptionIds: circleOptionIds,
+          scheduleResponses,
+          comment: scheduleComment.trim() || undefined,
+        };
+
+        if (currentUser?.photoURL) {
+          votePayload.userPhotoURL = currentUser.photoURL;
+        }
+
+        await castVote(poll.id, viewRoundNumber, votePayload);
+
+        // Confetti feedback
+        try {
+          confetti({
+            particleCount: 60,
+            spread: 50,
+            origin: { y: 0.6 },
+          });
+        } catch {}
+
+        showToast('success', userVote ? t('voting.toastVoteUpdated') : t('voting.toastVoteSuccess'));
+      } catch (err: any) {
+        console.error('Schedule vote failed:', err);
+        showToast('error', t('voting.toastVoteFailed') + (err.message || ''));
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // Standard poll voting submission
     if (selectedOptionIds.length === 0) {
       showToast('error', t('voting.toastSelectOption'));
       return;
@@ -306,11 +411,16 @@ export const PollVotingPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Top Navigation & Round Selector */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 flex-wrap">
-          {poll.status === 'closed' ? (
+          {isScheduleMode ? (
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{t('schedule.badge')}</span>
+            </span>
+          ) : poll.status === 'closed' ? (
             <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               {t('voting.pollConcluded', { total: poll.totalRounds })}
@@ -397,7 +507,9 @@ export const PollVotingPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
-              {currentRoundData.title || t('voting.roundN', { round: currentRoundData.roundNumber })}
+              {isScheduleMode
+                ? t('schedule.scheduleHeaderBadge')
+                : currentRoundData.title || t('voting.roundN', { round: currentRoundData.roundNumber })}
             </span>
             {currentRoundData.runoffSourceRound && (
               <span className="text-[11px] text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md font-medium">
@@ -425,18 +537,24 @@ export const PollVotingPage: React.FC = () => {
           />
 
           <div className="text-xs text-slate-500 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-slate-400" />
-            <span>
-              {isSingleChoice
-                ? t('voting.singleChoiceHint')
-                : t('voting.multiChoiceHint', { max: currentRoundData.maxChoices })}
-            </span>
+            {isScheduleMode ? (
+              <span>{t('schedule.choicesGuide')}</span>
+            ) : (
+              <>
+                <Layers className="w-3.5 h-3.5 text-slate-400" />
+                <span>
+                  {isSingleChoice
+                    ? t('voting.singleChoiceHint')
+                    : t('voting.multiChoiceHint', { max: currentRoundData.maxChoices })}
+                </span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Round Status Banner when Closed or Progressing */}
-      {isVotingClosed && (
+      {/* Round Status Banner when Closed or Progressing (Standard Poll) */}
+      {!isScheduleMode && isVotingClosed && (
         <>
           {poll.totalRounds > viewRoundNumber ? (
             <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-indigo-950">
@@ -506,17 +624,26 @@ export const PollVotingPage: React.FC = () => {
         </>
       )}
 
-      {/* Voting Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      {/* Voting / Response Input Section */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <span>{t('voting.optionsTitle')}</span>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-              {t('voting.totalOptionsCount', { count: currentRoundData.options.length })}
-            </span>
+            {isScheduleMode ? (
+              <>
+                <Calendar className="w-4 h-4 text-indigo-600" />
+                <span>{t('schedule.votingSectionTitle')}</span>
+              </>
+            ) : (
+              <>
+                <span>{t('voting.optionsTitle')}</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  {t('voting.totalOptionsCount', { count: currentRoundData.options.length })}
+                </span>
+              </>
+            )}
           </h3>
 
-          {!isSingleChoice && isVotingOpen && (
+          {!isScheduleMode && !isSingleChoice && isVotingOpen && (
             <span className="text-xs font-bold text-indigo-600">
               {t('voting.selectedOptionsCount', {
                 selected: selectedOptionIds.length,
@@ -526,32 +653,61 @@ export const PollVotingPage: React.FC = () => {
           )}
         </div>
 
-        {/* Options List */}
-        <div className="grid grid-cols-1 gap-3">
-          {currentRoundData.options.map((option, index) => {
-            const isSelected = selectedOptionIds.includes(option.id);
-            const isDisabled =
-              !isVotingOpen ||
-              (!isSelected &&
-                !isSingleChoice &&
-                selectedOptionIds.length >= currentRoundData.maxChoices);
+        {isScheduleMode ? (
+          /* Schedule Attendance Voting UI */
+          <ScheduleVotingTable
+            options={currentRoundData.options}
+            responses={scheduleResponses}
+            onChangeResponse={handleScheduleResponseChange}
+            onSetAllResponses={handleScheduleSetAll}
+            disabled={!isVotingOpen}
+          />
+        ) : (
+          /* Standard Options List */
+          <div className="grid grid-cols-1 gap-3">
+            {currentRoundData.options.map((option, index) => {
+              const isSelected = selectedOptionIds.includes(option.id);
+              const isDisabled =
+                !isVotingOpen ||
+                (!isSelected &&
+                  !isSingleChoice &&
+                  selectedOptionIds.length >= currentRoundData.maxChoices);
 
-            return (
-              <VoteOptionCard
-                key={option.id}
-                option={option}
-                index={index}
-                isSelected={isSelected}
-                isSingleChoice={isSingleChoice}
-                isDisabled={isDisabled}
-                onToggle={handleToggleOption}
-              />
-            );
-          })}
-        </div>
+              return (
+                <VoteOptionCard
+                  key={option.id}
+                  option={option}
+                  index={index}
+                  isSelected={isSelected}
+                  isSingleChoice={isSingleChoice}
+                  isDisabled={isDisabled}
+                  onToggle={handleToggleOption}
+                />
+              );
+            })}
+          </div>
+        )}
+
+        {/* Schedule Comment Input */}
+        {isScheduleMode && isVotingOpen && (
+          <div className="pt-3 border-t border-slate-100">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{t('schedule.commentLabel')}</span>
+              <span className="text-[11px] text-slate-400 font-normal">({t('schedule.optional')})</span>
+            </label>
+            <input
+              type="text"
+              value={scheduleComment}
+              onChange={e => setScheduleComment(e.target.value)}
+              placeholder={t('schedule.commentPlaceholder')}
+              className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-2xs"
+            />
+          </div>
+        )}
       </div>
 
-      {/* Action Footer & User State */}
+      {/* Action Footer & User State (Sticky bar) */}
       <div className="sticky bottom-4 z-30 bg-white/95 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
         {/* User state indicator / Name Input */}
         <div className="text-xs text-slate-600 w-full sm:w-auto text-center sm:text-left">
@@ -563,7 +719,11 @@ export const PollVotingPage: React.FC = () => {
               {userVote && (
                 <div className="flex items-center gap-1.5 text-emerald-600 font-bold mt-0.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{t('voting.votedInRound', { count: userVote.selectedOptionIds.length })}</span>
+                  <span>
+                    {isScheduleMode
+                      ? t('schedule.alreadyResponded')
+                      : t('voting.votedInRound', { count: userVote.selectedOptionIds.length })}
+                  </span>
                 </div>
               )}
             </div>
@@ -590,7 +750,11 @@ export const PollVotingPage: React.FC = () => {
               {userVote && (
                 <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs shrink-0">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{t('voting.anonVoted', { count: userVote.selectedOptionIds.length })}</span>
+                  <span>
+                    {isScheduleMode
+                      ? t('schedule.alreadyResponded')
+                      : t('voting.anonVoted', { count: userVote.selectedOptionIds.length })}
+                  </span>
                 </div>
               )}
             </div>
@@ -612,7 +776,9 @@ export const PollVotingPage: React.FC = () => {
               isLoading={isSubmitting}
               disabled={
                 !isVotingOpen ||
-                selectedOptionIds.length === 0 ||
+                (isScheduleMode
+                  ? Object.keys(scheduleResponses).length === 0
+                  : selectedOptionIds.length === 0) ||
                 (!currentUser && !anonName.trim())
               }
               className="w-full sm:w-auto px-8 shadow-md"
@@ -622,7 +788,11 @@ export const PollVotingPage: React.FC = () => {
                 : isVotingScheduled
                 ? t('voting.statusScheduled')
                 : userVote
-                ? t('voting.btnUpdateVote')
+                ? isScheduleMode
+                  ? t('schedule.btnUpdateResponse')
+                  : t('voting.btnUpdateVote')
+                : isScheduleMode
+                ? t('schedule.btnSubmitResponse')
                 : t('voting.btnSubmitVote')}
             </Button>
           ) : (
@@ -638,6 +808,17 @@ export const PollVotingPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Realtime Attendance Matrix Table for Schedule Mode (Chouseisan Style) */}
+      {isScheduleMode && scheduleSummary && (poll.isPublicResult || isAdmin) && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+          <ScheduleResultMatrix
+            poll={poll}
+            round={currentRoundData}
+            summary={scheduleSummary}
+          />
+        </div>
+      )}
 
       {/* Runoff Wizard Modal */}
       {summary && (
