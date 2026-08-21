@@ -424,7 +424,11 @@ export const PollResultsPage: React.FC = () => {
             summary={summary}
             isAdmin={isAdmin}
             onOpenRunoffModal={() => setIsRunoffModalOpen(true)}
-            isPollClosed={currentRoundData.status === 'closed'}
+            isPollClosed={
+              poll.status === 'closed' ||
+              currentRoundData.status === 'closed' ||
+              Date.now() > new Date(currentRoundData.endDate).getTime()
+            }
           />
         )}
 

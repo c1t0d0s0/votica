@@ -101,5 +101,10 @@ describe('i18n language detection and translations', () => {
 
     expect(translations.ja.home.heroTitle).toContain('少数意見も埋もれない');
     expect(translations.en.home.heroTitle).toContain('Fair Decisions');
+
+    expect(translations.ja.winnerBadge.firstPlaceWinner).toBe('第1位 確定');
+    expect(translations.en.winnerBadge.firstPlaceWinner).toBe('1st Place Winner Confirmed');
+    expect(translations.ja.winnerBadge.provisionalFirstPlace).toBe('暫定1位');
+    expect(translations.en.winnerBadge.provisionalFirstPlace).toBe('Provisional 1st Place');
   });
 });

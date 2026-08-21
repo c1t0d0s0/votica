@@ -242,6 +242,7 @@ export const translations = {
       startRunoffBtn: '決選投票を開始',
       winnerConfirmed: '第1位 確定',
       firstPlaceWinner: '第1位 確定',
+      provisionalFirstPlace: '暫定1位',
       winnerVotes: '{{votes}} 票 ({{percentage}}%)',
     },
     runoffModal: {
@@ -619,6 +620,7 @@ export const translations = {
       startRunoffBtn: 'Start Runoff Round',
       winnerConfirmed: '1st Place Winner Confirmed',
       firstPlaceWinner: '1st Place Winner Confirmed',
+      provisionalFirstPlace: 'Provisional 1st Place',
       winnerVotes: '{{votes}} votes ({{percentage}}%)',
     },
     runoffModal: {
