@@ -2,47 +2,57 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper functions
+    function getPollData(pollId) {
+      return get(/databases/$(database)/documents/polls/$(pollId)).data;
+    }
+
+    function isPollCreator(pollId) {
+      return request.auth != null && getPollData(pollId).creatorUid == request.auth.uid;
+    }
+
+    function isAnonymousAllowed(pollId) {
+      return ('requireAuth' in getPollData(pollId)) && getPollData(pollId).requireAuth == false;
+    }
+
     // 投票ドキュメント
     match /polls/{pollId} {
-      // 誰でも読み取り可能 (未ログインでも投票概要の参照は可能)
+      // 誰でも閲覧可能
       allow read: if true;
 
-      // ログイン済みユーザーなら誰でも新規作成可能
+      // ログインユーザーのみ新規作成可能
       allow create: if request.auth != null 
                     && request.resource.data.creatorUid == request.auth.uid;
 
-      // 作成者 (管理者) のみ更新・削除可能
+      // 作成者（管理者）のみ更新・削除可能
       allow update, delete: if request.auth != null 
                             && resource.data.creatorUid == request.auth.uid;
 
-      // ラウンド情報 (第1ラウンド、決選投票ラウンド...)
+      // 各投票ラウンド
       match /rounds/{roundNumber} {
+        // 誰でも閲覧可能
         allow read: if true;
         
-        // 作成者のみラウンド作成・編集可能
-        allow write: if request.auth != null 
-                     && get(/databases/$(database)/documents/polls/$(pollId)).data.creatorUid == request.auth.uid;
+        // 作成者のみラウンド作成・状態変更可能
+        allow write: if isPollCreator(pollId);
 
-        // 投票データ (1人1票 = document IDがuserId)
+        // 投票データ (1人1票: document ID = userId)
         match /votes/{userId} {
-          // 管理者 または 結果公開フラグがtrueの場合 または ログイン不要投票 または 投票者本人は閲覧可能
-          allow read: if (
-            (request.auth != null && userId == request.auth.uid) ||
-            (request.auth != null && get(/databases/$(database)/documents/polls/$(pollId)).data.creatorUid == request.auth.uid) ||
-            get(/databases/$(database)/documents/polls/$(pollId)).data.isPublicResult == true ||
-            get(/databases/$(database)/documents/polls/$(pollId)).data.requireAuth == false
-          );
+          // 誰でも投票結果・集計の読み取りが可能
+          allow read: if true;
 
-          // 認証済みユーザーの投票 または ログイン不要投票時の投票
+          // 投票の書き込み (Googleログイン済み または ログイン不要設定の投票)
           allow create, update: if (
+            // Google認証ユーザーの場合: UIDが一致すること
             (request.auth != null && request.auth.uid == userId && request.resource.data.userId == request.auth.uid) ||
-            (get(/databases/$(database)/documents/polls/$(pollId)).data.requireAuth == false && request.resource.data.userId == userId)
+            // ログイン不要設定（requireAuth: false）の投票の場合
+            (isAnonymousAllowed(pollId) && request.resource.data.userId == userId)
           );
 
-          // 投票の取り消し (本人のみ)
+          // 投票の取り消し
           allow delete: if (
             (request.auth != null && request.auth.uid == userId) ||
-            get(/databases/$(database)/documents/polls/$(pollId)).data.requireAuth == false
+            isAnonymousAllowed(pollId)
           );
         }
       }
