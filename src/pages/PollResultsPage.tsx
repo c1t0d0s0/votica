@@ -249,7 +249,7 @@ export const PollResultsPage: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
           <Button
             variant="outline"
             size="sm"
@@ -259,7 +259,7 @@ export const PollResultsPage: React.FC = () => {
             共有
           </Button>
 
-          <Link to={`/poll/${poll.id}`}>
+          <Link to={`/poll/${poll.id}`} className="shrink-0">
             <Button
               variant="primary"
               size="sm"

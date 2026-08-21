@@ -320,7 +320,7 @@ export const PollVotingPage: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
           <Button
             variant="outline"
             size="sm"
@@ -331,7 +331,7 @@ export const PollVotingPage: React.FC = () => {
           </Button>
 
           {(isAdmin || poll.isPublicResult) && (
-            <Link to={`/poll/${poll.id}/results`}>
+            <Link to={`/poll/${poll.id}/results`} className="shrink-0">
               <Button
                 variant="secondary"
                 size="sm"
