@@ -30,6 +30,31 @@ function toIsoDate(val: any): string {
   return new Date().toISOString();
 }
 
+// Helper to recursively strip undefined fields so Firestore setDoc / updateDoc never fails
+function cleanFirestoreData<T extends Record<string, any>>(obj: T): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(item =>
+      item && typeof item === 'object' && !(item instanceof Date)
+        ? cleanFirestoreData(item)
+        : item
+    );
+  }
+  if (typeof obj === 'object' && !(obj instanceof Date)) {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (value !== undefined) {
+        cleaned[key] =
+          value && typeof value === 'object' && !(value instanceof Date)
+            ? cleanFirestoreData(value)
+            : value;
+      }
+    }
+    return cleaned;
+  }
+  return obj;
+}
+
 /* =========================================================================
    MOCK / LOCAL STORAGE SERVICE HELPERS (Works without Firebase configuration)
    ========================================================================= */
@@ -120,13 +145,13 @@ export async function createPoll(
   const round1DocRef = doc(db, 'polls', pollId, 'rounds', '1');
 
   await setDoc(pollDocRef, {
-    ...newPoll,
+    ...cleanFirestoreData(newPoll),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 
   await setDoc(round1DocRef, {
-    ...newRound1,
+    ...cleanFirestoreData(newRound1),
     createdAt: serverTimestamp(),
   });
 
@@ -302,7 +327,7 @@ export async function castVote(
 
   const voteDocRef = doc(db, 'polls', pollId, 'rounds', roundNumber.toString(), 'votes', vote.userId);
   await setDoc(voteDocRef, {
-    ...voteDocData,
+    ...cleanFirestoreData(voteDocData),
     votedAt: serverTimestamp(),
   });
 }
@@ -447,7 +472,7 @@ export async function createRunoffRound(
   const pollDocRef = doc(db, 'polls', pollId);
 
   await setDoc(roundDocRef, {
-    ...nextRound,
+    ...cleanFirestoreData(nextRound),
     createdAt: serverTimestamp(),
   });
 

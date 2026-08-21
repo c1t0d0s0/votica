@@ -250,14 +250,16 @@ export const PollVotingPage: React.FC = () => {
       const voterName = currentUser
         ? currentUser.displayName || 'Googleユーザー'
         : anonName.trim();
-      const voterPhoto = currentUser?.photoURL || undefined;
-
-      await castVote(poll.id, viewRoundNumber, {
+      const votePayload: Omit<Vote, 'id' | 'votedAt'> = {
         userId: voterUid,
         userDisplayName: voterName,
-        userPhotoURL: voterPhoto,
         selectedOptionIds,
-      });
+      };
+      if (currentUser?.photoURL) {
+        votePayload.userPhotoURL = currentUser.photoURL;
+      }
+
+      await castVote(poll.id, viewRoundNumber, votePayload);
 
       // Confetti feedback
       try {
