@@ -7,11 +7,13 @@ const STORAGE_KEY = 'votica_firebase_config';
 
 export function getSavedFirebaseConfig(): FirebaseConfig | null {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.apiKey && parsed.projectId) {
-        return parsed;
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.apiKey && parsed.projectId) {
+          return parsed;
+        }
       }
     }
   } catch (e) {

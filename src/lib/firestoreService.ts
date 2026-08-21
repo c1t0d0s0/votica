@@ -19,6 +19,47 @@ import { Poll, PollRound, Vote } from './types';
 const MOCK_POLLS_KEY = 'votica_mock_polls';
 const MOCK_ROUNDS_KEY = 'votica_mock_rounds';
 const MOCK_VOTES_KEY = 'votica_mock_votes';
+const ACCESSED_POLLS_KEY = 'votica_accessed_poll_ids';
+
+/**
+ * Retrieves the list of poll IDs that have been accessed / visited by this client.
+ */
+export function getAccessedPollIds(): string[] {
+  try {
+    const raw = localStorage.getItem(ACCESSED_POLLS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Records a poll ID as accessed / known by this client.
+ */
+export function recordAccessedPoll(pollId: string): void {
+  if (!pollId || typeof pollId !== 'string') return;
+  try {
+    const current = getAccessedPollIds();
+    const filtered = current.filter(id => id !== pollId);
+    const updated = [pollId, ...filtered].slice(0, 50);
+    localStorage.setItem(ACCESSED_POLLS_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('Failed to record accessed poll:', e);
+  }
+}
+
+/**
+ * Removes a poll ID from the accessed history.
+ */
+export function removeAccessedPoll(pollId: string): void {
+  try {
+    const current = getAccessedPollIds();
+    const updated = current.filter(id => id !== pollId);
+    localStorage.setItem(ACCESSED_POLLS_KEY, JSON.stringify(updated));
+  } catch {}
+}
 
 // Helper for converting Firestore timestamp or ISO string to ISO string
 function toIsoDate(val: any): string {
@@ -68,8 +109,12 @@ function getMockPolls(): Record<string, Poll> {
 }
 
 function saveMockPolls(polls: Record<string, Poll>) {
-  localStorage.setItem(MOCK_POLLS_KEY, JSON.stringify(polls));
-  window.dispatchEvent(new Event('votica_mock_update'));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(MOCK_POLLS_KEY, JSON.stringify(polls));
+  }
+  if (typeof window !== 'undefined' && typeof Event !== 'undefined') {
+    window.dispatchEvent(new Event('votica_mock_update'));
+  }
 }
 
 function getMockRounds(): Record<string, Record<number, PollRound>> {
@@ -81,8 +126,12 @@ function getMockRounds(): Record<string, Record<number, PollRound>> {
 }
 
 function saveMockRounds(rounds: Record<string, Record<number, PollRound>>) {
-  localStorage.setItem(MOCK_ROUNDS_KEY, JSON.stringify(rounds));
-  window.dispatchEvent(new Event('votica_mock_update'));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(MOCK_ROUNDS_KEY, JSON.stringify(rounds));
+  }
+  if (typeof window !== 'undefined' && typeof Event !== 'undefined') {
+    window.dispatchEvent(new Event('votica_mock_update'));
+  }
 }
 
 function getMockVotes(): Record<string, Record<number, Record<string, Vote>>> {
@@ -94,8 +143,12 @@ function getMockVotes(): Record<string, Record<number, Record<string, Vote>>> {
 }
 
 function saveMockVotes(votes: Record<string, Record<number, Record<string, Vote>>>) {
-  localStorage.setItem(MOCK_VOTES_KEY, JSON.stringify(votes));
-  window.dispatchEvent(new Event('votica_mock_update'));
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(MOCK_VOTES_KEY, JSON.stringify(votes));
+  }
+  if (typeof window !== 'undefined' && typeof Event !== 'undefined') {
+    window.dispatchEvent(new Event('votica_mock_update'));
+  }
 }
 
 /* =========================================================================
@@ -137,6 +190,7 @@ export async function createPoll(
     rounds[pollId] = { 1: newRound1 };
     saveMockRounds(rounds);
 
+    recordAccessedPoll(pollId);
     return pollId;
   }
 
@@ -155,6 +209,7 @@ export async function createPoll(
     createdAt: serverTimestamp(),
   });
 
+  recordAccessedPoll(pollId);
   return pollId;
 }
 
@@ -165,7 +220,11 @@ export function subscribePoll(pollId: string, callback: (poll: Poll | null) => v
   if (!isFirebaseConfigured || !db) {
     const check = () => {
       const polls = getMockPolls();
-      callback(polls[pollId] || null);
+      const poll = polls[pollId] || null;
+      if (poll) {
+        recordAccessedPoll(pollId);
+      }
+      callback(poll);
     };
     check();
     window.addEventListener('votica_mock_update', check);
@@ -178,6 +237,7 @@ export function subscribePoll(pollId: string, callback: (poll: Poll | null) => v
     docSnap => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        recordAccessedPoll(docSnap.id);
         callback({
           ...(data as Poll),
           requireAuth: data.requireAuth !== false,
@@ -313,6 +373,7 @@ export async function castVote(
     if (!allVotes[pollId][roundNumber]) allVotes[pollId][roundNumber] = {};
     allVotes[pollId][roundNumber][vote.userId] = voteDocData;
     saveMockVotes(allVotes);
+    recordAccessedPoll(pollId);
     return;
   }
 
@@ -331,6 +392,7 @@ export async function castVote(
     ...cleanFirestoreData(voteDocData),
     votedAt: serverTimestamp(),
   });
+  recordAccessedPoll(pollId);
 }
 
 /**
@@ -625,30 +687,64 @@ export async function getUserCreatedPolls(userId: string): Promise<Poll[]> {
 }
 
 /**
- * Retrieves public polls.
+ * Fetches a single poll by ID.
  */
-export async function getPublicPolls(): Promise<Poll[]> {
+export async function getPoll(pollId: string): Promise<Poll | null> {
+  if (!pollId) return null;
+
   if (!isFirebaseConfigured || !db) {
     const polls = getMockPolls();
-    return Object.values(polls)
-      .filter(p => p.isPublicResult || p.status === 'active')
+    return polls[pollId] || null;
+  }
+
+  try {
+    const pollDocRef = doc(db, 'polls', pollId);
+    const docSnap = await getDoc(pollDocRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        ...(data as Poll),
+        requireAuth: data.requireAuth !== false,
+        showVoterNames: data.showVoterNames === true,
+        id: docSnap.id,
+        createdAt: toIsoDate(data.createdAt),
+        updatedAt: toIsoDate(data.updatedAt),
+      };
+    }
+    return null;
+  } catch (err) {
+    console.error(`Error fetching poll ${pollId}:`, err);
+    return null;
+  }
+}
+
+/**
+ * Retrieves public polls that have been accessed / opened by this client.
+ * If the user has not accessed any poll URL/ID, returns an empty array.
+ */
+export async function getPublicPolls(): Promise<Poll[]> {
+  const accessedIds = getAccessedPollIds();
+  if (accessedIds.length === 0) {
+    return [];
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    const polls = getMockPolls();
+    return accessedIds
+      .map(id => polls[id])
+      .filter((p): p is Poll => Boolean(p))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   try {
-    const pollsColRef = collection(db, 'polls');
-    const q = query(pollsColRef, where('isPublicResult', '==', true));
-    const snap = await getDocs(q);
-    return snap.docs
-      .map(d => ({
-        ...(d.data() as Poll),
-        id: d.id,
-        createdAt: toIsoDate(d.data().createdAt),
-        updatedAt: toIsoDate(d.data().updatedAt),
-      }))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const pollPromises = accessedIds.map(id => getPoll(id));
+    const results = await Promise.all(pollPromises);
+    const validPolls = results.filter((p): p is Poll => p !== null);
+    return validPolls.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   } catch (err) {
-    console.error('Error fetching public polls:', err);
+    console.error('Error fetching accessed public polls:', err);
     return [];
   }
 }
