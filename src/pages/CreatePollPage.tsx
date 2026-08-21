@@ -191,7 +191,7 @@ export const CreatePollPage: React.FC = () => {
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="例: 次回ハッカソンの開発テーマ決定投票"
-              className="w-full text-sm sm:text-base px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+              className="w-full text-sm sm:text-base px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
             />
           </div>
 
@@ -204,7 +204,7 @@ export const CreatePollPage: React.FC = () => {
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="投票の趣旨や選定基準、補足情報などを記入してください"
-              className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+              className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
             />
           </div>
         </div>
@@ -226,7 +226,7 @@ export const CreatePollPage: React.FC = () => {
                 required
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white shadow-sm"
               />
             </div>
             <div>
@@ -238,7 +238,7 @@ export const CreatePollPage: React.FC = () => {
                 required
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white shadow-sm"
               />
             </div>
           </div>
@@ -275,7 +275,7 @@ export const CreatePollPage: React.FC = () => {
             <select
               value={maxChoices}
               onChange={e => setMaxChoices(Number(e.target.value))}
-              className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white font-medium text-slate-800"
+              className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium shadow-sm"
             >
               <option value={1}>1つだけ投票 (単一選択)</option>
               {options.length >= 2 && <option value={2}>最大 2つまで投票</option>}

@@ -67,19 +67,6 @@ export const HomePage: React.FC = () => {
             <span>同率1位の自動検出 &amp; 決選投票ウィザード搭載</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-black tracking-tight leading-tight">
-            迷いを決着に変える、
-            <br />
-            <span className="bg-gradient-to-r from-pink-400 to-amber-300 bg-clip-text text-transparent">
-              決選投票対応
-            </span>
-            プラットフォーム
-          </h1>
-
-          <p className="text-sm sm:text-base text-indigo-100/90 leading-relaxed">
-            Google認証で1人1票を確実に保証。同率1位が発生してもワンクリックで上位候補による決選投票を開始可能。20個までの選択肢・複数選択上限・結果の公開制御も自由自在です。
-          </p>
-
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Link to="/create">
               <Button
@@ -138,7 +125,7 @@ export const HomePage: React.FC = () => {
             value={directPollId}
             onChange={e => setDirectPollId(e.target.value)}
             placeholder="共有された投票IDまたはURLを貼り付け (例: poll_abc123)"
-            className="flex-1 w-full text-sm bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+            className="flex-1 w-full text-sm bg-white text-slate-900 placeholder:text-slate-400 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-sm"
           />
           <Button type="submit" variant="secondary" size="md" className="w-full sm:w-auto shrink-0">
             投票を開く

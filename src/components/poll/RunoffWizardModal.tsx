@@ -260,7 +260,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
               required
               value={title}
               onChange={e => setTitle(e.target.value)}
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white shadow-sm"
             />
           </div>
 
@@ -272,7 +272,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
                 required
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white shadow-sm"
               />
             </div>
             <div>
@@ -282,7 +282,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
                 required
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full text-xs px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white shadow-sm"
               />
             </div>
           </div>
@@ -294,7 +294,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
             <select
               value={maxChoices}
               onChange={e => setMaxChoices(Number(e.target.value))}
-              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+              className="w-full text-sm px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium shadow-sm"
             >
               <option value={1}>1つだけ選択 (単一投票 - 決選推奨)</option>
               {selectedCandidateIds.length > 2 && (

@@ -66,7 +66,7 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({ summary }) => {
               key={r.option.id}
               className={`p-4 rounded-2xl border transition-all ${
                 isTop
-                  ? 'bg-white border-amber-300 shadow-md shadow-amber-50 dark:border-amber-700'
+                  ? 'bg-white border-amber-300 shadow-md shadow-amber-50'
                   : 'bg-white border-slate-200 shadow-sm'
               }`}
             >

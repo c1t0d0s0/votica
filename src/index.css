@@ -4,6 +4,25 @@
   body {
     @apply antialiased text-slate-800 bg-slate-50 min-h-screen selection:bg-indigo-500 selection:text-white;
   }
+
+  input,
+  textarea,
+  select {
+    color: #0f172a !important; /* text-slate-900 */
+    background-color: #ffffff;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8 !important; /* text-slate-400 */
+  }
+
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    background-color: #f1f5f9;
+    color: #64748b !important;
+  }
 }
 
 /* Custom scrollbars */

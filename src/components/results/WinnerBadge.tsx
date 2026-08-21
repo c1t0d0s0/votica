@@ -34,7 +34,7 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
   // Case 1: Tie for 1st place
   if (summary.hasTieForFirst && summary.tiedFirstOptions.length > 1) {
     return (
-      <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border-2 border-amber-300 dark:border-amber-700 shadow-md">
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border-2 border-amber-300 shadow-md">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-200">
@@ -77,7 +77,7 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
   // Case 2: Clear Winner
   if (summary.winner) {
     return (
-      <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-pink-500/10 to-amber-500/10 border-2 border-indigo-200 dark:border-indigo-800 shadow-md">
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-pink-500/10 to-amber-500/10 border-2 border-indigo-200 shadow-md">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-yellow-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">

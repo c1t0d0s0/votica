@@ -31,10 +31,10 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-md w-full px-4 pointer-events-none">
         {toasts.map(toast => {
           const bgColors = {
-            success: 'bg-emerald-50 text-emerald-900 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-100 dark:border-emerald-800',
-            error: 'bg-rose-50 text-rose-900 border-rose-300 dark:bg-rose-950 dark:text-rose-100 dark:border-rose-800',
-            warning: 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950 dark:text-amber-100 dark:border-amber-800',
-            info: 'bg-indigo-50 text-indigo-900 border-indigo-300 dark:bg-indigo-950 dark:text-indigo-100 dark:border-indigo-800',
+            success: 'bg-emerald-50 text-emerald-900 border-emerald-300',
+            error: 'bg-rose-50 text-rose-900 border-rose-300',
+            warning: 'bg-amber-50 text-amber-900 border-amber-300',
+            info: 'bg-indigo-50 text-indigo-900 border-indigo-300',
           };
 
           const icons = {
@@ -53,7 +53,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               <div className="flex-1 text-sm font-medium leading-relaxed">{toast.message}</div>
               <button
                 onClick={() => removeToast(toast.id)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-0.5 rounded"
+                className="text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded"
               >
                 <X className="w-4 h-4" />
               </button>

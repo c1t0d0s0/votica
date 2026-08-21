@@ -28,7 +28,7 @@ export const VoteOptionCard: React.FC<VoteOptionCardProps> = ({
       }}
       className={`relative flex items-center gap-3.5 p-4 rounded-2xl border-2 transition-all cursor-pointer select-none ${
         isSelected
-          ? 'border-indigo-600 bg-indigo-50/70 shadow-md shadow-indigo-100 dark:bg-indigo-950/40 dark:border-indigo-500'
+          ? 'border-indigo-600 bg-indigo-50/70 shadow-md shadow-indigo-100'
           : isDisabled
           ? 'border-slate-200 bg-slate-50/60 opacity-60 cursor-not-allowed'
           : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50/80 shadow-sm'
@@ -59,7 +59,7 @@ export const VoteOptionCard: React.FC<VoteOptionCardProps> = ({
           <span className="text-xs font-bold text-slate-400">#{index + 1}</span>
           <h4
             className={`text-base font-semibold leading-snug break-words ${
-              isSelected ? 'text-indigo-950 dark:text-indigo-100' : 'text-slate-800'
+              isSelected ? 'text-indigo-950 font-bold' : 'text-slate-800'
             }`}
           >
             {option.text}
