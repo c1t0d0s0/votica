@@ -31,6 +31,7 @@ export interface Poll {
   updatedAt: string;
   status: 'active' | 'closed' | 'archived';
   isPublicResult: boolean;
+  requireAuth: boolean; // true = Google login required (default), false = login not required (self-declared name)
   currentRound: number;
   totalRounds: number;
 }

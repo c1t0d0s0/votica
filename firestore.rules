@@ -25,20 +25,25 @@ service cloud.firestore {
 
         // 投票データ (1人1票 = document IDがuserId)
         match /votes/{userId} {
-          // 管理者 または 結果公開フラグがtrueの場合 または 投票者本人は閲覧可能
-          allow read: if request.auth != null && (
-            userId == request.auth.uid ||
-            get(/databases/$(database)/documents/polls/$(pollId)).data.creatorUid == request.auth.uid ||
-            get(/databases/$(database)/documents/polls/$(pollId)).data.isPublicResult == true
+          // 管理者 または 結果公開フラグがtrueの場合 または ログイン不要投票 または 投票者本人は閲覧可能
+          allow read: if (
+            (request.auth != null && userId == request.auth.uid) ||
+            (request.auth != null && get(/databases/$(database)/documents/polls/$(pollId)).data.creatorUid == request.auth.uid) ||
+            get(/databases/$(database)/documents/polls/$(pollId)).data.isPublicResult == true ||
+            get(/databases/$(database)/documents/polls/$(pollId)).data.requireAuth == false
           );
 
-          // 認証済みで、自分のUIDでのみ投票・再投票が可能
-          allow create, update: if request.auth != null 
-                                && request.auth.uid == userId
-                                && request.resource.data.userId == request.auth.uid;
+          // 認証済みユーザーの投票 または ログイン不要投票時の投票
+          allow create, update: if (
+            (request.auth != null && request.auth.uid == userId && request.resource.data.userId == request.auth.uid) ||
+            (get(/databases/$(database)/documents/polls/$(pollId)).data.requireAuth == false && request.resource.data.userId == userId)
+          );
 
           // 投票の取り消し (本人のみ)
-          allow delete: if request.auth != null && request.auth.uid == userId;
+          allow delete: if (
+            (request.auth != null && request.auth.uid == userId) ||
+            get(/databases/$(database)/documents/polls/$(pollId)).data.requireAuth == false
+          );
         }
       }
     }

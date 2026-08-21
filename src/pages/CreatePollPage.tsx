@@ -52,6 +52,9 @@ export const CreatePollPage: React.FC = () => {
   // Result visibility (default: false -> creator only)
   const [isPublicResult, setIsPublicResult] = useState<boolean>(false);
 
+  // Authentication requirement (default: true -> Google login required)
+  const [requireAuth, setRequireAuth] = useState<boolean>(true);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,6 +110,7 @@ export const CreatePollPage: React.FC = () => {
         creatorPhotoURL: currentUser.photoURL || undefined,
         status: 'active',
         isPublicResult,
+        requireAuth,
       };
 
       const initialRound: Omit<PollRound, 'roundNumber'> = {
@@ -327,6 +331,37 @@ export const CreatePollPage: React.FC = () => {
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">
                   投票した参加者全員がリアルタイムで途中結果と集計グラフを閲覧できます。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Login Requirement Setting */}
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-slate-700 mb-2">
+              投票者の認証設定
+            </label>
+            <div
+              onClick={() => setRequireAuth(!requireAuth)}
+              className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3.5 select-none"
+            >
+              <input
+                type="checkbox"
+                id="noLoginCheckbox"
+                checked={!requireAuth}
+                onChange={e => setRequireAuth(!e.target.checked)}
+                className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+              />
+              <div className="flex-1 text-xs">
+                <label
+                  htmlFor="noLoginCheckbox"
+                  className="font-bold text-slate-900 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>投票にはログイン不要にする (自己申告のユーザー名で投票可能)</span>
+                </label>
+                <p className="text-slate-500 mt-1 leading-relaxed">
+                  チェックを入れると、参加者はGoogleログインしなくても自己申告のお名前を入力するだけで投票に参加できます。
+                  チェックなし（推奨）の場合は、Google認証により厳格な1人1票が保証されます。
                 </p>
               </div>
             </div>

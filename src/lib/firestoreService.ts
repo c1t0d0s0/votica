@@ -155,6 +155,7 @@ export function subscribePoll(pollId: string, callback: (poll: Poll | null) => v
         const data = docSnap.data();
         callback({
           ...(data as Poll),
+          requireAuth: data.requireAuth !== false,
           id: docSnap.id,
           createdAt: toIsoDate(data.createdAt),
           updatedAt: toIsoDate(data.updatedAt),
