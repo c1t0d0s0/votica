@@ -68,7 +68,27 @@ npm run build
 ### 4. Firestore セキュリティルールの適用
 Firebase コンソールの「Firestore Database」->「ルール」タブに、本リポジトリの `firestore.rules` の内容をコピーして公開します。
 
-### 5. Webアプリの登録 & APIキーの取得
+### 5. Firestore 複合インデックスの作成
+「自分が作成した投票一覧」を作成日時順に取得するため、Firestore の複合インデックス（Composite Index）が必要です。
+
+**方法 A: Firebase コンソールから作成（推奨・簡単）**
+1. Firebase コンソールの「Firestore Database」->「インデックス」タブを開き、「インデックスを追加」をクリックします。
+2. 以下を設定して「インデックスを作成」をクリックします：
+   - **コレクション ID**: `polls`
+   - **インデックスを作成するフィールド**:
+     1. フィールド: `creatorUid` / クエリ スコープ: `コレクション` / 順序: `昇順`
+     2. フィールド: `createdAt` / クエリ スコープ: `コレクション` / 順序: `降順`
+3. 数分でビルドが完了します。
+
+> **Tip**: アプリ実行時にインデックス未作成の場合、ブラウザの開発者コンソールにインデックス作成用の直接リンクが出力されます。そのリンクをクリックして「インデックスを作成」を押すだけでも作成可能です。
+
+**方法 B: Firebase CLI を使用する場合**
+本リポジトリに含まれる `firestore.indexes.json` を使用してコマンドからデプロイできます：
+```bash
+firebase deploy --only firestore:indexes
+```
+
+### 6. Webアプリの登録 & APIキーの取得
 1. プロジェクトの概要 (歯車アイコン) ->「プロジェクトの設定」を開きます。
 2. 「マイアプリ」の Web アイコン `</>` をクリックしてアプリを登録します。
 3. 表示された `firebaseConfig` の各値を `.env.local` または GitHub Secrets に設定します。
@@ -123,6 +143,7 @@ votica/
 │   ├── main.tsx
 │   └── index.css
 ├── firestore.rules             # Cloud Firestore セキュリティルール
+├── firestore.indexes.json      # Cloud Firestore 複合インデックス定義
 ├── .env.example                # 環境変数テンプレート
 └── package.json
 ```
