@@ -54,6 +54,12 @@ describe('i18n language detection and translations', () => {
     expect(detectBrowserLanguage(['en-US', 'en'])).toBe('en');
   });
 
+  it('detects English when browser primary language is English even if Japanese is in secondary preferences', () => {
+    // Typical scenario on English browser or OS in Japan (e.g. ['en-US', 'en', 'ja'])
+    expect(detectBrowserLanguage(['en-US', 'en', 'ja'])).toBe('en');
+    expect(detectBrowserLanguage(['en', 'ja-JP'])).toBe('en');
+  });
+
   it('detects English for non-Japanese languages (zh-CN, ko-KR, fr-FR, de, etc.)', () => {
     const nonJaLanguages = [
       ['zh-CN', 'zh'],

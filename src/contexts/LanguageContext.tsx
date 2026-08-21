@@ -15,14 +15,15 @@ const LANGUAGE_STORAGE_KEY = 'votica_lang';
 
 /**
  * Detect browser language:
- * - If browser language starts with 'ja' (e.g. 'ja', 'ja-JP'), returns 'ja'
+ * - Checks the primary (most preferred) browser language (e.g. navigator.languages[0] or navigator.language)
+ * - If it starts with 'ja' (e.g. 'ja', 'ja-JP'), returns 'ja'
  * - Otherwise (e.g. 'en', 'en-US', 'zh', 'ko', 'fr', etc.), returns 'en'
  */
 export function detectBrowserLanguage(
   customLanguages?: readonly string[],
   savedLang?: string | null
 ): Language {
-  // 1. Check saved language preference first
+  // 1. Check saved language preference first (explicit user selection)
   if (savedLang === 'ja' || savedLang === 'en') {
     return savedLang;
   }
@@ -36,19 +37,19 @@ export function detectBrowserLanguage(
     } catch {}
   }
 
-  // 2. Check browser navigator language list
-  const browserLanguages =
-    customLanguages ||
+  // 2. Check primary browser language (highest priority preference)
+  const primaryLang =
+    (customLanguages && customLanguages.length > 0 ? customLanguages[0] : undefined) ||
     (typeof navigator !== 'undefined'
-      ? navigator.languages || (navigator.language ? [navigator.language] : [])
-      : []);
+      ? (navigator.languages && navigator.languages.length > 0
+          ? navigator.languages[0]
+          : navigator.language)
+      : undefined) ||
+    '';
 
-  for (const lang of browserLanguages) {
-    if (!lang) continue;
-    const lower = lang.toLowerCase();
-    if (lower.startsWith('ja')) {
-      return 'ja';
-    }
+  const lower = primaryLang.toLowerCase().trim();
+  if (lower.startsWith('ja')) {
+    return 'ja';
   }
 
   return 'en';
