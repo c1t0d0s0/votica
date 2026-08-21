@@ -55,6 +55,9 @@ export const CreatePollPage: React.FC = () => {
   // Authentication requirement (default: true -> Google login required)
   const [requireAuth, setRequireAuth] = useState<boolean>(true);
 
+  // Voter names breakdown visibility (default: false -> hide who voted for what)
+  const [showVoterNames, setShowVoterNames] = useState<boolean>(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -111,6 +114,7 @@ export const CreatePollPage: React.FC = () => {
         status: 'active',
         isPublicResult,
         requireAuth,
+        showVoterNames,
       };
 
       const initialRound: Omit<PollRound, 'roundNumber'> = {
@@ -362,6 +366,37 @@ export const CreatePollPage: React.FC = () => {
                 <p className="text-slate-500 mt-1 leading-relaxed">
                   チェックを入れると、参加者はGoogleログインしなくても自己申告のお名前を入力するだけで投票に参加できます。
                   チェックなし（推奨）の場合は、Google認証により厳格な1人1票が保証されます。
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Voter Names Breakdown Setting */}
+          <div className="pt-2">
+            <label className="block text-xs font-bold text-slate-700 mb-2">
+              投票者内訳の表示設定 (誰がどれに投票したか)
+            </label>
+            <div
+              onClick={() => setShowVoterNames(!showVoterNames)}
+              className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3.5 select-none"
+            >
+              <input
+                type="checkbox"
+                id="showVoterNamesCheckbox"
+                checked={showVoterNames}
+                onChange={e => setShowVoterNames(e.target.checked)}
+                className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+              />
+              <div className="flex-1 text-xs">
+                <label
+                  htmlFor="showVoterNamesCheckbox"
+                  className="font-bold text-slate-900 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>結果ページで誰がどの選択肢に投票したか（投票者名）を表示する</span>
+                </label>
+                <p className="text-slate-500 mt-1 leading-relaxed">
+                  チェックなし（デフォルト・推奨）の場合は、得票数とグラフのみ表示され、個人の投票先は非公開（匿名投票）となります。
+                  チェックを入れると、結果ページで各選択肢に投票した人のお名前（記名投票）が表示されます。
                 </p>
               </div>
             </div>

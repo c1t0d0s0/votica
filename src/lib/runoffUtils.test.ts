@@ -76,4 +76,23 @@ describe('runoffUtils', () => {
     const top2 = filterCandidatesForRunoff(summary, 'top_k', 2);
     expect(top2.length).toBe(2);
   });
+
+  it('should accurately attach voter breakdown per option', () => {
+    const votes: Vote[] = [
+      { id: 'u1', userId: 'u1', userDisplayName: '田中', selectedOptionIds: ['opt-1'], votedAt: new Date().toISOString() },
+      { id: 'u2', userId: 'u2', userDisplayName: '佐藤', selectedOptionIds: ['opt-1'], votedAt: new Date().toISOString() },
+      { id: 'u3', userId: 'u3', userDisplayName: '鈴木', selectedOptionIds: ['opt-2'], votedAt: new Date().toISOString() },
+    ];
+
+    const summary = calculateRoundResults(dummyRound, votes);
+    const opt1 = summary.results.find(r => r.option.id === 'opt-1');
+    const opt2 = summary.results.find(r => r.option.id === 'opt-2');
+    const opt3 = summary.results.find(r => r.option.id === 'opt-3');
+
+    expect(opt1?.voters?.length).toBe(2);
+    expect(opt1?.voters?.map(v => v.userDisplayName)).toEqual(['田中', '佐藤']);
+    expect(opt2?.voters?.length).toBe(1);
+    expect(opt2?.voters?.[0].userDisplayName).toBe('鈴木');
+    expect(opt3?.voters?.length).toBe(0);
+  });
 });

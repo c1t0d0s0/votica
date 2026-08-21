@@ -47,14 +47,30 @@ export function calculateRoundResults(round: PollRound, votes: Vote[]): RoundRes
     });
   });
 
-  // Build raw list
-  const unrankedList: Array<{ option: PollOption; votesCount: number }> = round.options.map((opt, idx) => {
+  // Build raw list with voter breakdown
+  const unrankedList: Array<{
+    option: PollOption;
+    votesCount: number;
+    voters: { userId: string; userDisplayName: string; userPhotoURL?: string }[];
+  }> = round.options.map((opt, idx) => {
+    const optionVoters: { userId: string; userDisplayName: string; userPhotoURL?: string }[] = [];
+    votes.forEach(v => {
+      if (v.selectedOptionIds.includes(opt.id)) {
+        optionVoters.push({
+          userId: v.userId,
+          userDisplayName: v.userDisplayName || '参加者',
+          userPhotoURL: v.userPhotoURL,
+        });
+      }
+    });
+
     return {
       option: {
         ...opt,
         color: opt.color || getOptionColor(idx),
       },
       votesCount: countMap.get(opt.id) || 0,
+      voters: optionVoters,
     };
   });
 
@@ -77,6 +93,7 @@ export function calculateRoundResults(round: PollRound, votes: Vote[]): RoundRes
       votesCount: item.votesCount,
       percentage,
       rank: currentRank,
+      voters: item.voters,
     });
   }
 

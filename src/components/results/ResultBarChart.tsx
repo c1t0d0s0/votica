@@ -1,11 +1,16 @@
 import React from 'react';
 import { RoundResultSummary } from '../../lib/types';
+import { Users } from 'lucide-react';
 
 interface ResultBarChartProps {
   summary: RoundResultSummary;
+  showVoterNames?: boolean;
 }
 
-export const ResultBarChart: React.FC<ResultBarChartProps> = ({ summary }) => {
+export const ResultBarChart: React.FC<ResultBarChartProps> = ({
+  summary,
+  showVoterNames = false,
+}) => {
   const getRankBadge = (rank: number) => {
     if (rank === 1) {
       return (
@@ -101,6 +106,31 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({ summary }) => {
                   }}
                 />
               </div>
+
+              {/* Voter Breakdown (when enabled by creator) */}
+              {showVoterNames && r.voters && r.voters.length > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
+                  <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1 shrink-0 mr-1">
+                    <Users className="w-3 h-3 text-indigo-500" />
+                    投票者 ({r.voters.length}名):
+                  </span>
+                  {r.voters.map((v, vIdx) => (
+                    <span
+                      key={v.userId + '_' + vIdx}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-medium"
+                    >
+                      {v.userPhotoURL && (
+                        <img
+                          src={v.userPhotoURL}
+                          alt=""
+                          className="w-3 h-3 rounded-full object-cover"
+                        />
+                      )}
+                      <span>{v.userDisplayName}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

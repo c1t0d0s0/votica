@@ -32,6 +32,7 @@ export interface Poll {
   status: 'active' | 'closed' | 'archived';
   isPublicResult: boolean;
   requireAuth: boolean; // true = Google login required (default), false = login not required (self-declared name)
+  showVoterNames: boolean; // true = show voter breakdown per option, false = hide who voted for what (default: false)
   currentRound: number;
   totalRounds: number;
 }
@@ -52,6 +53,11 @@ export interface OptionResult {
   rank: number;
   isWinner?: boolean;
   isTied?: boolean;
+  voters?: {
+    userId: string;
+    userDisplayName: string;
+    userPhotoURL?: string;
+  }[];
 }
 
 export interface RoundResultSummary {

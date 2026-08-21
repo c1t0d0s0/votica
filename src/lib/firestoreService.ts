@@ -181,6 +181,7 @@ export function subscribePoll(pollId: string, callback: (poll: Poll | null) => v
         callback({
           ...(data as Poll),
           requireAuth: data.requireAuth !== false,
+          showVoterNames: data.showVoterNames === true,
           id: docSnap.id,
           createdAt: toIsoDate(data.createdAt),
           updatedAt: toIsoDate(data.updatedAt),
@@ -502,6 +503,31 @@ export async function updatePollVisibility(pollId: string, isPublicResult: boole
   const pollDocRef = doc(db, 'polls', pollId);
   await updateDoc(pollDocRef, {
     isPublicResult,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Updates poll voter names breakdown visibility (show / hide who voted for what).
+ */
+export async function updatePollVoterNamesVisibility(
+  pollId: string,
+  showVoterNames: boolean
+): Promise<void> {
+  const nowIso = new Date().toISOString();
+  if (!isFirebaseConfigured || !db) {
+    const polls = getMockPolls();
+    if (polls[pollId]) {
+      polls[pollId].showVoterNames = showVoterNames;
+      polls[pollId].updatedAt = nowIso;
+      saveMockPolls(polls);
+    }
+    return;
+  }
+
+  const pollDocRef = doc(db, 'polls', pollId);
+  await updateDoc(pollDocRef, {
+    showVoterNames,
     updatedAt: serverTimestamp(),
   });
 }

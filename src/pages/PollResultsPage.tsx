@@ -10,6 +10,7 @@ import {
   updatePollVisibility,
   updateRoundStatus,
   updatePollStatus,
+  updatePollVoterNamesVisibility,
 } from '../lib/firestoreService';
 import { Poll, PollRound, Vote, RoundResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
@@ -29,6 +30,7 @@ import {
   AlertCircle,
   Vote as VoteIcon,
   CheckCircle2,
+  Users,
 } from 'lucide-react';
 
 export const PollResultsPage: React.FC = () => {
@@ -47,6 +49,7 @@ export const PollResultsPage: React.FC = () => {
   const [isRunoffModalOpen, setIsRunoffModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isTogglingVisibility, setIsTogglingVisibility] = useState(false);
+  const [isTogglingVoterNames, setIsTogglingVoterNames] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Subscribe to poll
@@ -162,6 +165,25 @@ export const PollResultsPage: React.FC = () => {
     }
   };
 
+  const handleToggleVoterNamesVisibility = async () => {
+    if (!isAdmin) return;
+    try {
+      setIsTogglingVoterNames(true);
+      const nextVal = !poll.showVoterNames;
+      await updatePollVoterNamesVisibility(poll.id, nextVal);
+      showToast(
+        'success',
+        nextVal
+          ? '投票者内訳（記名投票）を「表示中」に切り替えました'
+          : '投票者内訳（匿名投票）を「非表示」に切り替えました'
+      );
+    } catch (err: any) {
+      showToast('error', '設定の更新に失敗しました: ' + (err.message || ''));
+    } finally {
+      setIsTogglingVoterNames(false);
+    }
+  };
+
   const handleCloseRound = async () => {
     if (!isAdmin) return;
     if (window.confirm('このラウンドの投票受付を即時終了しますか？')) {
@@ -260,7 +282,7 @@ export const PollResultsPage: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
                 variant={poll.isPublicResult ? 'success' : 'outline'}
                 size="sm"
@@ -274,6 +296,21 @@ export const PollResultsPage: React.FC = () => {
                 }
               >
                 {poll.isPublicResult ? '結果公開中 (全体公開)' : '結果非公開 (管理者のみ)'}
+              </Button>
+
+              <Button
+                variant={poll.showVoterNames ? 'success' : 'outline'}
+                size="sm"
+                onClick={handleToggleVoterNamesVisibility}
+                isLoading={isTogglingVoterNames}
+                leftIcon={<Users className="w-3.5 h-3.5" />}
+                className={
+                  poll.showVoterNames
+                    ? 'bg-indigo-600 hover:bg-indigo-500 border-none text-white text-xs'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs'
+                }
+              >
+                {poll.showVoterNames ? '投票者内訳: 表示中' : '投票者内訳: 非表示'}
               </Button>
 
               {summary?.hasTieForFirst && (
@@ -349,11 +386,20 @@ export const PollResultsPage: React.FC = () => {
       {/* Main Results Container */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
               {currentRoundData.title || `第${currentRoundData.roundNumber}回 集計結果`}
             </span>
             <span className="text-xs text-slate-400">• リアルタイム更新</span>
+            {poll.showVoterNames ? (
+              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                記名投票 (投票者内訳表示中)
+              </span>
+            ) : (
+              <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                匿名投票 (投票者内訳非表示)
+              </span>
+            )}
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             {poll.title}
@@ -371,7 +417,7 @@ export const PollResultsPage: React.FC = () => {
         )}
 
         {/* Results Bar Chart */}
-        {summary && <ResultBarChart summary={summary} />}
+        {summary && <ResultBarChart summary={summary} showVoterNames={poll.showVoterNames} />}
       </div>
 
       {/* Runoff Wizard Modal */}
