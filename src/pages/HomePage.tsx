@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/LanguageContext';
 import { getUserCreatedPolls, getPublicPolls } from '../lib/firestoreService';
@@ -7,17 +7,13 @@ import { Poll } from '../lib/types';
 import { PollCard } from '../components/poll/PollCard';
 import { DeletePollModal } from '../components/poll/DeletePollModal';
 import { Button } from '../components/common/Button';
-import { Vote, PlusCircle, Search, Calendar } from 'lucide-react';
-import { useToast } from '../contexts/ToastContext';
+import { Vote, PlusCircle, Calendar } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const { currentUser } = useAuth();
-  const { showToast } = useToast();
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<'my' | 'public'>('my');
-  const [directPollId, setDirectPollId] = useState('');
   const [myPolls, setMyPolls] = useState<Poll[]>([]);
   const [publicPolls, setPublicPolls] = useState<Poll[]>([]);
   const [pollToDelete, setPollToDelete] = useState<Poll | null>(null);
@@ -42,38 +38,8 @@ export const HomePage: React.FC = () => {
     loadPolls();
   }, [loadPolls]);
 
-  const handleDirectAccess = (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanId = directPollId.trim().replace(/^.*\/poll\//, '').replace(/^#\/poll\//, '');
-    if (!cleanId) {
-      showToast('error', t('home.enterPollIdError'));
-      return;
-    }
-    navigate(`/poll/${cleanId}`);
-  };
-
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-
-      {/* Direct Poll Access Box */}
-      <section className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200 shadow-sm">
-        <form onSubmit={handleDirectAccess} className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="flex items-center gap-2 text-slate-700 font-bold text-sm shrink-0">
-            <Search className="w-4 h-4 text-indigo-600" />
-            <span>{t('home.joinPoll')}</span>
-          </div>
-          <input
-            type="text"
-            value={directPollId}
-            onChange={e => setDirectPollId(e.target.value)}
-            placeholder={t('home.pollIdPlaceholder')}
-            className="flex-1 w-full text-sm bg-white text-slate-900 placeholder:text-slate-400 px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-sm"
-          />
-          <Button type="submit" variant="secondary" size="md" className="w-full sm:w-auto shrink-0">
-            {t('home.openPoll')}
-          </Button>
-        </form>
-      </section>
 
       {/* Polls Dashboard Tabs */}
       <section className="space-y-6">
