@@ -384,7 +384,7 @@ export const translations = {
       createTitle: '新しい日程調整を作成',
       createSubtitle: 'イベント名と候補日程を入力して出欠表を作成・共有します。回答者はログイン不要で参加可能です。',
       tabStandardPoll: '通常の投票',
-      tabScheduleAdjust: '日程調整 (調整さん風)',
+      tabScheduleAdjust: '日程調整',
       createHeaderBtn: '日程調整',
       homeCreateBtn: '日程調整を作成',
       createNewSchedule: '新しい日程調整を作成',
