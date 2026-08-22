@@ -451,6 +451,106 @@ export const translations = {
       noVotesYetTitle: 'まだ回答がありません',
       noVotesYetDesc: '共有URLを参加者に送って出欠を回答してもらいましょう！',
     },
+    theme: {
+      sectionTitle: 'ページデザインテーマ',
+      sectionDesc: 'イベントや用途に合わせて20種類以上のデザインから選べます（デフォルト: クラシック・インディゴ）',
+      previewTitle: '選択中テーマのプレビュー',
+      selectedBadge: '選択中',
+      catAll: 'すべて',
+      catSimple: 'シンプル',
+      catBusiness: 'ビジネス',
+      catCool: 'クール＆ダーク',
+      catCute: 'かわいい＆ポップ',
+      catNatural: 'ナチュラル＆和風',
+      default: {
+        name: 'クラシック・インディゴ',
+        desc: '知性と思慮深さを感じさせる洗練された標準デザイン',
+      },
+      minimalSlate: {
+        name: 'ミニマル・スレート',
+        desc: '白黒と無彩色グレーで整えた極限のミニマリズム',
+      },
+      nordicFrost: {
+        name: '北欧フロスト',
+        desc: '澄んだアイスブルーと冷涼な空気を感じる北欧デザイン',
+      },
+      warmLatte: {
+        name: 'ウォーム・ラテ',
+        desc: '優しいミルクティーとサンドベージュの穏やかなトーン',
+      },
+      corporateNavy: {
+        name: 'コーポレート・ネイビー',
+        desc: '高い信頼と誠実さを醸し出す濃紺のビジネススタイル',
+      },
+      executiveEmerald: {
+        name: 'エグゼクティブ・エメラルド',
+        desc: '深みのあるエメラルドグリーンと上品な佇まい',
+      },
+      steelGraphite: {
+        name: 'スチール・グラファイト',
+        desc: '鋼のように堅牢でクールなグレーと論理的なスタイル',
+      },
+      bordeauxWine: {
+        name: 'ボルドー・ワイン',
+        desc: '格式高い深紅ワインと上品なバーガンディのフォーマル感',
+      },
+      midnightBlack: {
+        name: 'ミッドナイト・ダーク',
+        desc: '漆黒の夜空とクールなブルーのシックなダークモード',
+      },
+      cyberNeon: {
+        name: 'サイバー・ネオン',
+        desc: '暗闇に光るネオンシアンとマゼンタのサイバーパンク感',
+      },
+      deepSpace: {
+        name: 'ディープ・スペース',
+        desc: '宇宙の深淵を思わせるダークバイオレットと神秘的な紫',
+      },
+      sunsetGlow: {
+        name: 'サンセット・グロー',
+        desc: '夕暮れのエネルギッシュなオレンジと情熱的なグラデーション',
+      },
+      sakuraPink: {
+        name: 'さくらピンク',
+        desc: '桜の花びらのようにふんわり華やかで優しいソフトピンク',
+      },
+      pastelCandy: {
+        name: 'パステル・キャンディ',
+        desc: 'パステルラベンダーとスカイブルーのゆめかわいいポップ調',
+      },
+      sunnyCitrus: {
+        name: 'サニー・シトラス',
+        desc: '元気いっぱいのビタミンイエローと明るい太陽の光',
+      },
+      freshMint: {
+        name: 'フレッシュ・ミント',
+        desc: '爽快で愛らしいミントグリーンと爽やかな清涼感',
+      },
+      berrySmoothie: {
+        name: 'ベリー・スムージー',
+        desc: '甘酸っぱいラズベリーとストロベリーのキュートな色彩',
+      },
+      forestGreen: {
+        name: 'フォレスト・グリーン',
+        desc: '深い森の木々と大地を感じさせるアースカラー',
+      },
+      matchaGreen: {
+        name: '和風・抹茶',
+        desc: '侘び寂びを感じる上品な抹茶色と生成りの和モダン',
+      },
+      coffeeMocha: {
+        name: 'カフェ・モカ',
+        desc: '淹れたての珈琲とキャラメルの温もりあるカフェスタイル',
+      },
+      retroPop: {
+        name: 'レトロ・ポップ',
+        desc: '70-80年代風のヴィンテージマスタード＆テラコッタ',
+      },
+      lavenderGarden: {
+        name: 'ラベンダー・ガーデン',
+        desc: '心やすらぐハーブの香りと優しいラベンダーパープル',
+      },
+    },
   },
   en: {
     common: {
@@ -901,6 +1001,106 @@ export const translations = {
       commentsRow: 'Comments',
       noVotesYetTitle: 'No responses yet',
       noVotesYetDesc: 'Share the link with participants to collect attendance!',
+    },
+    theme: {
+      sectionTitle: 'Page Design Theme',
+      sectionDesc: 'Choose from over 20 unique design themes for your poll or schedule (Default: Classic Indigo).',
+      previewTitle: 'Selected Theme Preview',
+      selectedBadge: 'Selected',
+      catAll: 'All',
+      catSimple: 'Simple',
+      catBusiness: 'Business',
+      catCool: 'Cool & Dark',
+      catCute: 'Cute & Pop',
+      catNatural: 'Natural & Japanese',
+      default: {
+        name: 'Classic Indigo',
+        desc: 'Sophisticated standard indigo palette with timeless clarity.',
+      },
+      minimalSlate: {
+        name: 'Minimal Slate',
+        desc: 'Monochrome and slate gray minimalism with maximum focus.',
+      },
+      nordicFrost: {
+        name: 'Nordic Frost',
+        desc: 'Crisp ice blue and cool tones inspired by Scandinavian serenity.',
+      },
+      warmLatte: {
+        name: 'Warm Latte',
+        desc: 'Cozy milk tea and sand beige hues for a welcoming mood.',
+      },
+      corporateNavy: {
+        name: 'Corporate Navy',
+        desc: 'Authoritative deep navy and slate for professional business decisions.',
+      },
+      executiveEmerald: {
+        name: 'Executive Emerald',
+        desc: 'Refined emerald green with rich executive atmosphere.',
+      },
+      steelGraphite: {
+        name: 'Steel Graphite',
+        desc: 'Steel gray and sharp accents for analytical and logical meetings.',
+      },
+      bordeauxWine: {
+        name: 'Bordeaux Wine',
+        desc: 'Prestigious burgundy and deep wine red for formal occasions.',
+      },
+      midnightBlack: {
+        name: 'Midnight Dark',
+        desc: 'Sleek dark mode with deep black and midnight sky accents.',
+      },
+      cyberNeon: {
+        name: 'Cyber Neon',
+        desc: 'Glowing neon cyan and magenta for a futuristic cyberpunk vibe.',
+      },
+      deepSpace: {
+        name: 'Deep Space',
+        desc: 'Mystical dark violet and cosmic galaxy glow.',
+      },
+      sunsetGlow: {
+        name: 'Sunset Glow',
+        desc: 'Passionate orange and dusk warmth with vibrant energy.',
+      },
+      sakuraPink: {
+        name: 'Sakura Pink',
+        desc: 'Gentle cherry blossom pink with tender warmth.',
+      },
+      pastelCandy: {
+        name: 'Pastel Candy',
+        desc: 'Dreamy pastel lavender and soft sky blue pop.',
+      },
+      sunnyCitrus: {
+        name: 'Sunny Citrus',
+        desc: 'Bright and joyful vitamin yellow and sunny citrus cheer.',
+      },
+      freshMint: {
+        name: 'Fresh Mint',
+        desc: 'Refreshing mint green and teal with clean vibes.',
+      },
+      berrySmoothie: {
+        name: 'Berry Smoothie',
+        desc: 'Sweet and tangy berry pink with playful charm.',
+      },
+      forestGreen: {
+        name: 'Forest Green',
+        desc: 'Earthy tones of deep woodland and natural serenity.',
+      },
+      matchaGreen: {
+        name: 'Matcha & Wabi-Sabi',
+        desc: 'Traditional Japanese matcha green and ivory elegance.',
+      },
+      coffeeMocha: {
+        name: 'Coffee Mocha',
+        desc: 'Rich roast coffee and warm caramel cafe comfort.',
+      },
+      retroPop: {
+        name: 'Retro Pop',
+        desc: 'Nostalgic 70s-80s mustard yellow and terracotta retro flair.',
+      },
+      lavenderGarden: {
+        name: 'Lavender Garden',
+        desc: 'Soothing herbal lavender purple and lilac calmness.',
+      },
     },
   },
 } as const;

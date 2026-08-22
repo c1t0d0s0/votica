@@ -10,6 +10,7 @@ import {
   candidateLinesToOptions,
 } from '../lib/scheduleUtils';
 import { ScheduleQuickDatePicker } from '../components/schedule/ScheduleQuickDatePicker';
+import { ThemeSelector } from '../components/theme/ThemeSelector';
 import { Button } from '../components/common/Button';
 import {
   Calendar,
@@ -20,6 +21,7 @@ import {
   Lock,
   Globe,
   Vote as VoteIcon,
+  Palette,
 } from 'lucide-react';
 
 export const CreateSchedulePage: React.FC = () => {
@@ -68,6 +70,9 @@ export const CreateSchedulePage: React.FC = () => {
 
   // Show voter names (default: true -> named attendance sheet)
   const [showVoterNames, setShowVoterNames] = useState<boolean>(true);
+
+  // Design theme (default: 'default')
+  const [theme, setTheme] = useState<string>('default');
 
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -135,6 +140,7 @@ export const CreateSchedulePage: React.FC = () => {
         requireAuth,
         showVoterNames,
         pollType: 'schedule',
+        theme,
       };
 
       const initialRound: Omit<PollRound, 'roundNumber'> = {
@@ -439,6 +445,24 @@ export const CreateSchedulePage: React.FC = () => {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Section 4: Page Design Theme (20+ variations) */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <Palette className="w-4 h-4 text-indigo-600" />
+              <span>{t('theme.sectionTitle')}</span>
+            </h3>
+            <span className="text-xs text-slate-400">
+              全22種類
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
+            {t('theme.sectionDesc')}
+          </p>
+
+          <ThemeSelector selectedThemeId={theme} onSelectTheme={setTheme} />
         </div>
 
         {/* Submit action */}

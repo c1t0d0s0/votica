@@ -16,6 +16,7 @@ import {
 import { Poll, PollRound, Vote, RoundResultSummary, ScheduleResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
 import { calculateScheduleResults } from '../lib/scheduleUtils';
+import { getTheme } from '../lib/themes';
 import { ResultBarChart } from '../components/results/ResultBarChart';
 import { WinnerBadge } from '../components/results/WinnerBadge';
 import { ScheduleResultMatrix } from '../components/schedule/ScheduleResultMatrix';
@@ -103,6 +104,7 @@ export const PollResultsPage: React.FC = () => {
   }, [pollId, selectedRoundNumber]);
 
   const isScheduleMode = poll?.pollType === 'schedule';
+  const currentTheme = getTheme(poll?.theme);
 
   // Compute summary on round or votes update
   useEffect(() => {
@@ -248,264 +250,267 @@ export const PollResultsPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      {/* Top Bar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link
-            to={`/poll/${poll.id}`}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{t('results.adminPanel') === '' ? '' : t('common.backToVote')}</span>
-          </Link>
-
-          {poll.status === 'closed' && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
-              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              {t('voting.pollConcluded', { total: poll.totalRounds })}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsShareModalOpen(true)}
-            leftIcon={<Share2 className="w-3.5 h-3.5" />}
-          >
-            {t('common.share')}
-          </Button>
-
-          <Link to={`/poll/${poll.id}`} className="shrink-0">
-            <Button
-              variant="primary"
-              size="sm"
-              leftIcon={<VoteIcon className="w-3.5 h-3.5" />}
+    <div className={`-mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Top Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              to={`/poll/${poll.id}`}
+              className={`inline-flex items-center gap-1.5 text-xs font-bold transition-colors ${currentTheme.classes.primaryText}`}
             >
-              {t('common.vote')}
-            </Button>
-          </Link>
-        </div>
-      </div>
+              <ArrowLeft className="w-4 h-4" />
+              <span>{t('results.adminPanel') === '' ? '' : t('common.backToVote')}</span>
+            </Link>
 
-      {/* Admin Control Panel Banner (Visible only to Creator) */}
-      {isAdmin && (
-        <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-800 space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-indigo-400" />
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
-                {t('results.adminPanel')}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <Button
-                variant={poll.isPublicResult ? 'success' : 'outline'}
-                size="sm"
-                onClick={handleToggleVisibility}
-                isLoading={isTogglingVisibility}
-                leftIcon={poll.isPublicResult ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-                className={
-                  poll.isPublicResult
-                    ? 'bg-emerald-600 hover:bg-emerald-500 border-none text-white text-xs'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs'
-                }
-              >
-                {poll.isPublicResult ? t('results.publicResultsBtn') : t('results.privateResultsBtn')}
-              </Button>
-
-              <Button
-                variant={poll.showVoterNames ? 'success' : 'outline'}
-                size="sm"
-                onClick={handleToggleVoterNamesVisibility}
-                isLoading={isTogglingVoterNames}
-                leftIcon={<Users className="w-3.5 h-3.5" />}
-                className={
-                  poll.showVoterNames
-                    ? 'bg-indigo-600 hover:bg-indigo-500 border-none text-white text-xs'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs'
-                }
-              >
-                {poll.showVoterNames ? t('results.voterNamesVisibleBtn') : t('results.voterNamesHiddenBtn')}
-              </Button>
-
-              {summary?.hasTieForFirst && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setIsRunoffModalOpen(true)}
-                  leftIcon={<Swords className="w-3.5 h-3.5" />}
-                  className="bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 shadow-pink-500/20 text-xs"
-                >
-                  {t('results.startRunoffBtn')}
-                </Button>
-              )}
-
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => setIsDeleteModalOpen(true)}
-                leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                className="bg-rose-700/90 hover:bg-rose-600 border border-rose-600/50 text-white text-xs"
-              >
-                {t('common.deletePoll')}
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-            <div>
-              {t('results.currentRoundLabel')} <span className="text-white font-bold">{currentRoundData.title}</span> (
-              {currentRoundData.status === 'open' && Date.now() <= new Date(currentRoundData.endDate).getTime()
-                ? t('results.statusOpen')
-                : t('results.statusClosed')}
-              )
-            </div>
-
-            <div className="flex items-center gap-3">
-              {currentRoundData.status === 'open' && Date.now() <= new Date(currentRoundData.endDate).getTime() ? (
-                <button
-                  onClick={handleCloseRound}
-                  className="text-xs text-rose-400 hover:text-rose-300 font-semibold underline underline-offset-2"
-                >
-                  {t('results.closeRoundEarly')}
-                </button>
-              ) : (
-                <button
-                  onClick={handleReopenRound}
-                  className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2"
-                >
-                  {t('results.reopenRound')}
-                </button>
-              )}
-
-              {poll.status === 'closed' && (
-                <button
-                  onClick={handleReopenPoll}
-                  className="text-xs text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2"
-                >
-                  {t('results.reopenPoll')}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Multi-round switcher */}
-      {allRounds.length > 1 && (
-        <RoundSelector
-          rounds={allRounds}
-          selectedRoundNumber={selectedRoundNumber}
-          currentActiveRoundNumber={poll.currentRound}
-          onSelectRound={setSelectedRoundNumber}
-        />
-      )}
-
-      {/* Main Results Container */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
-              {isScheduleMode
-                ? t('schedule.resultsTitle')
-                : currentRoundData.title || t('results.resultsTitle', { round: currentRoundData.roundNumber })}
-            </span>
-            <span className="text-xs text-slate-400">{t('results.realtimeUpdate')}</span>
-            {isScheduleMode ? (
-              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                <Calendar className="w-3 h-3 inline mr-1" />
-                {t('schedule.badge')}
-              </span>
-            ) : poll.showVoterNames ? (
-              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                {t('results.namedVotingBadge')}
-              </span>
-            ) : (
-              <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                {t('results.anonymousVotingBadge')}
+            {poll.status === 'closed' && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                {t('voting.pollConcluded', { total: poll.totalRounds })}
               </span>
             )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            {poll.title}
-          </h1>
-          {poll.description && (
-            <p className="text-sm text-slate-600 mt-2 leading-relaxed whitespace-pre-wrap">
-              {poll.description}
-            </p>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsShareModalOpen(true)}
+              leftIcon={<Share2 className="w-3.5 h-3.5" />}
+            >
+              {t('common.share')}
+            </Button>
+
+            <Link to={`/poll/${poll.id}`} className="shrink-0">
+              <Button
+                variant="primary"
+                size="sm"
+                leftIcon={<VoteIcon className="w-3.5 h-3.5" />}
+                className={currentTheme.classes.primaryBtn}
+              >
+                {t('common.vote')}
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Admin Control Panel Banner (Visible only to Creator) */}
+        {isAdmin && (
+          <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-indigo-400" />
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                  {t('results.adminPanel')}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant={poll.isPublicResult ? 'success' : 'outline'}
+                  size="sm"
+                  onClick={handleToggleVisibility}
+                  isLoading={isTogglingVisibility}
+                  leftIcon={poll.isPublicResult ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                  className={
+                    poll.isPublicResult
+                      ? 'bg-emerald-600 hover:bg-emerald-500 border-none text-white text-xs'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs'
+                  }
+                >
+                  {poll.isPublicResult ? t('results.publicResultsBtn') : t('results.privateResultsBtn')}
+                </Button>
+
+                <Button
+                  variant={poll.showVoterNames ? 'success' : 'outline'}
+                  size="sm"
+                  onClick={handleToggleVoterNamesVisibility}
+                  isLoading={isTogglingVoterNames}
+                  leftIcon={<Users className="w-3.5 h-3.5" />}
+                  className={
+                    poll.showVoterNames
+                      ? 'bg-indigo-600 hover:bg-indigo-500 border-none text-white text-xs'
+                      : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 text-xs'
+                  }
+                >
+                  {poll.showVoterNames ? t('results.voterNamesVisibleBtn') : t('results.voterNamesHiddenBtn')}
+                </Button>
+
+                {summary?.hasTieForFirst && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setIsRunoffModalOpen(true)}
+                    leftIcon={<Swords className="w-3.5 h-3.5" />}
+                    className="bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 shadow-pink-500/20 text-xs"
+                  >
+                    {t('results.startRunoffBtn')}
+                  </Button>
+                )}
+
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setIsDeleteModalOpen(true)}
+                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                  className="bg-rose-700/90 hover:bg-rose-600 border border-rose-600/50 text-white text-xs"
+                >
+                  {t('common.deletePoll')}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+              <div>
+                {t('results.currentRoundLabel')} <span className="text-white font-bold">{currentRoundData.title}</span> (
+                {currentRoundData.status === 'open' && Date.now() <= new Date(currentRoundData.endDate).getTime()
+                  ? t('results.statusOpen')
+                  : t('results.statusClosed')}
+                )
+              </div>
+
+              <div className="flex items-center gap-3">
+                {currentRoundData.status === 'open' && Date.now() <= new Date(currentRoundData.endDate).getTime() ? (
+                  <button
+                    onClick={handleCloseRound}
+                    className="text-xs text-rose-400 hover:text-rose-300 font-semibold underline underline-offset-2"
+                  >
+                    {t('results.closeRoundEarly')}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleReopenRound}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold underline underline-offset-2"
+                  >
+                    {t('results.reopenRound')}
+                  </button>
+                )}
+
+                {poll.status === 'closed' && (
+                  <button
+                    onClick={handleReopenPoll}
+                    className="text-xs text-amber-400 hover:text-amber-300 font-semibold underline underline-offset-2"
+                  >
+                    {t('results.reopenPoll')}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Multi-round switcher */}
+        {allRounds.length > 1 && (
+          <RoundSelector
+            rounds={allRounds}
+            selectedRoundNumber={selectedRoundNumber}
+            currentActiveRoundNumber={poll.currentRound}
+            onSelectRound={setSelectedRoundNumber}
+          />
+        )}
+
+        {/* Main Results Container */}
+        <div className={`rounded-3xl p-6 sm:p-8 border shadow-sm space-y-6 ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
+          <div>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className={`text-xs font-black uppercase tracking-wider ${currentTheme.classes.primaryText}`}>
+                {isScheduleMode
+                  ? t('schedule.resultsTitle')
+                  : currentRoundData.title || t('results.resultsTitle', { round: currentRoundData.roundNumber })}
+              </span>
+              <span className={`text-xs ${currentTheme.classes.mutedText}`}>{t('results.realtimeUpdate')}</span>
+              {isScheduleMode ? (
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                  <Calendar className="w-3 h-3 inline mr-1" />
+                  {t('schedule.badge')}
+                </span>
+              ) : poll.showVoterNames ? (
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                  {t('results.namedVotingBadge')}
+                </span>
+              ) : (
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                  {t('results.anonymousVotingBadge')}
+                </span>
+              )}
+            </div>
+            <h1 className={`text-2xl sm:text-3xl font-black tracking-tight ${currentTheme.classes.titleText}`}>
+              {poll.title}
+            </h1>
+            {poll.description && (
+              <p className={`text-sm mt-2 leading-relaxed whitespace-pre-wrap ${currentTheme.classes.bodyText}`}>
+                {poll.description}
+              </p>
+            )}
+          </div>
+
+          {isScheduleMode ? (
+            /* Schedule Matrix Results */
+            scheduleSummary && (
+              <ScheduleResultMatrix
+                poll={poll}
+                round={currentRoundData}
+                summary={scheduleSummary}
+              />
+            )
+          ) : (
+            /* Standard Voting Results */
+            <>
+              {/* Tie Detection / Winner Celebratory Banner */}
+              {summary && (
+                <WinnerBadge
+                  summary={summary}
+                  isAdmin={isAdmin}
+                  onOpenRunoffModal={() => setIsRunoffModalOpen(true)}
+                  isPollClosed={
+                    poll.status === 'closed' ||
+                    currentRoundData.status === 'closed' ||
+                    Date.now() > new Date(currentRoundData.endDate).getTime()
+                  }
+                />
+              )}
+
+              {/* Results Bar Chart */}
+              {summary && <ResultBarChart summary={summary} showVoterNames={poll.showVoterNames} />}
+            </>
           )}
         </div>
 
-        {isScheduleMode ? (
-          /* Schedule Matrix Results */
-          scheduleSummary && (
-            <ScheduleResultMatrix
-              poll={poll}
-              round={currentRoundData}
-              summary={scheduleSummary}
-            />
-          )
-        ) : (
-          /* Standard Voting Results */
-          <>
-            {/* Tie Detection / Winner Celebratory Banner */}
-            {summary && (
-              <WinnerBadge
-                summary={summary}
-                isAdmin={isAdmin}
-                onOpenRunoffModal={() => setIsRunoffModalOpen(true)}
-                isPollClosed={
-                  poll.status === 'closed' ||
-                  currentRoundData.status === 'closed' ||
-                  Date.now() > new Date(currentRoundData.endDate).getTime()
-                }
-              />
-            )}
-
-            {/* Results Bar Chart */}
-            {summary && <ResultBarChart summary={summary} showVoterNames={poll.showVoterNames} />}
-          </>
+        {/* Runoff Wizard Modal */}
+        {summary && (
+          <RunoffWizardModal
+            isOpen={isRunoffModalOpen}
+            onClose={() => setIsRunoffModalOpen(false)}
+            pollId={poll.id}
+            previousRound={currentRoundData}
+            summary={summary}
+            nextRoundNumber={allRounds.length + 1}
+            onSuccess={newRoundNumber => {
+              setSelectedRoundNumber(newRoundNumber);
+              navigate(`/poll/${poll.id}`);
+            }}
+          />
         )}
-      </div>
 
-      {/* Runoff Wizard Modal */}
-      {summary && (
-        <RunoffWizardModal
-          isOpen={isRunoffModalOpen}
-          onClose={() => setIsRunoffModalOpen(false)}
+        {/* Share Modal */}
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          pollTitle={poll.title}
           pollId={poll.id}
-          previousRound={currentRoundData}
-          summary={summary}
-          nextRoundNumber={allRounds.length + 1}
-          onSuccess={newRoundNumber => {
-            setSelectedRoundNumber(newRoundNumber);
-            navigate(`/poll/${poll.id}`);
+        />
+
+        {/* Delete Modal */}
+        <DeletePollModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          pollTitle={poll.title}
+          pollId={poll.id}
+          onSuccess={() => {
+            navigate('/');
           }}
         />
-      )}
-
-      {/* Share Modal */}
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        pollTitle={poll.title}
-        pollId={poll.id}
-      />
-
-      {/* Delete Modal */}
-      <DeletePollModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        pollTitle={poll.title}
-        pollId={poll.id}
-        onSuccess={() => {
-          navigate('/');
-        }}
-      />
+      </div>
     </div>
   );
 };

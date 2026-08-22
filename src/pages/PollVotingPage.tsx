@@ -15,6 +15,7 @@ import {
 import { Poll, PollRound, Vote, RoundResultSummary, ScheduleChoice, ScheduleResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
 import { calculateScheduleResults } from '../lib/scheduleUtils';
+import { getTheme } from '../lib/themes';
 import { VoteOptionCard } from '../components/poll/VoteOptionCard';
 import { ScheduleVotingTable } from '../components/schedule/ScheduleVotingTable';
 import { ScheduleResultMatrix } from '../components/schedule/ScheduleResultMatrix';
@@ -140,6 +141,7 @@ export const PollVotingPage: React.FC = () => {
   }, [pollId, viewRoundNumber]);
 
   const isScheduleMode = poll?.pollType === 'schedule';
+  const currentTheme = getTheme(poll?.theme);
 
   // Compute summary on round or votes update
   useEffect(() => {
@@ -425,126 +427,127 @@ export const PollVotingPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      {/* Top Navigation & Round Selector */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-2 flex-wrap">
-          {isScheduleMode ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{t('schedule.badge')}</span>
-            </span>
-          ) : poll.status === 'closed' ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              {t('voting.pollConcluded', { total: poll.totalRounds })}
-            </span>
-          ) : poll.totalRounds > 1 ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-pink-100 text-pink-800 border border-pink-200">
-              <Swords className="w-3.5 h-3.5 text-pink-600" />
-              {t('voting.runoffInProgress', { round: poll.currentRound, total: poll.totalRounds })}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-              <VoteIcon className="w-3.5 h-3.5" />
-              {t('voting.round1')}
-            </span>
-          )}
+    <div className={`-mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Top Navigation & Round Selector */}
+        <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl border shadow-sm ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isScheduleMode ? (
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                <Calendar className="w-3.5 h-3.5" />
+                <span>{t('schedule.badge')}</span>
+              </span>
+            ) : poll.status === 'closed' ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-300">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                {t('voting.pollConcluded', { total: poll.totalRounds })}
+              </span>
+            ) : poll.totalRounds > 1 ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-pink-100 text-pink-800 border border-pink-200">
+                <Swords className="w-3.5 h-3.5 text-pink-600" />
+                {t('voting.runoffInProgress', { round: poll.currentRound, total: poll.totalRounds })}
+              </span>
+            ) : (
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                <VoteIcon className="w-3.5 h-3.5" />
+                {t('voting.round1')}
+              </span>
+            )}
 
-          {isAnonymousAllowed ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <Globe className="w-3 h-3 text-emerald-600" />
-              {t('voting.noLoginAllowed')}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-              <ShieldCheck className="w-3 h-3 text-slate-500" />
-              {t('voting.loginRequired')}
-            </span>
-          )}
+            {isAnonymousAllowed ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <Globe className="w-3 h-3 text-emerald-600" />
+                {t('voting.noLoginAllowed')}
+              </span>
+            ) : (
+              <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                <ShieldCheck className="w-3 h-3 text-slate-500" />
+                {t('voting.loginRequired')}
+              </span>
+            )}
 
-          {isAdmin && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
-              {t('voting.adminBadge')}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsShareModalOpen(true)}
-            leftIcon={<Share2 className="w-3.5 h-3.5" />}
-          >
-            {t('voting.shareBtn')}
-          </Button>
-
-          {(isAdmin || poll.isPublicResult) && (
-            <Link to={`/poll/${poll.id}/results`} className="shrink-0">
-              <Button
-                variant="secondary"
-                size="sm"
-                leftIcon={<BarChart3 className="w-3.5 h-3.5 text-indigo-400" />}
-              >
-                {isAdmin ? t('voting.adminResultsBtn') : t('voting.resultsBtn')}
-              </Button>
-            </Link>
-          )}
-
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsDeleteModalOpen(true)}
-              leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />}
-              className="text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700"
-            >
-              {t('common.delete')}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Multi-round Switcher if multiple rounds exist */}
-      {allRounds.length > 1 && (
-        <RoundSelector
-          rounds={allRounds}
-          selectedRoundNumber={viewRoundNumber}
-          currentActiveRoundNumber={poll.currentRound}
-          onSelectRound={setViewRoundNumber}
-        />
-      )}
-
-      {/* Poll Header Card */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs font-black uppercase tracking-wider text-indigo-600">
-              {isScheduleMode
-                ? t('schedule.scheduleHeaderBadge')
-                : currentRoundData.title || t('voting.roundN', { round: currentRoundData.roundNumber })}
-            </span>
-            {currentRoundData.runoffSourceRound && (
-              <span className="text-[11px] text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md font-medium">
-                {t('voting.runoffFromRound', { round: currentRoundData.runoffSourceRound })}
+            {isAdmin && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs ${currentTheme.classes.primaryBtn}`}>
+                {t('voting.adminBadge')}
               </span>
             )}
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
-            {poll.title}
-          </h1>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsShareModalOpen(true)}
+              leftIcon={<Share2 className="w-3.5 h-3.5" />}
+            >
+              {t('voting.shareBtn')}
+            </Button>
 
-          {poll.description && (
-            <p className="text-sm text-slate-600 mt-2 leading-relaxed whitespace-pre-wrap">
-              {poll.description}
-            </p>
-          )}
+            {(isAdmin || poll.isPublicResult) && (
+              <Link to={`/poll/${poll.id}/results`} className="shrink-0">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<BarChart3 className={`w-3.5 h-3.5 ${currentTheme.classes.primaryText}`} />}
+                >
+                  {isAdmin ? t('voting.adminResultsBtn') : t('voting.resultsBtn')}
+                </Button>
+              </Link>
+            )}
+
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsDeleteModalOpen(true)}
+                leftIcon={<Trash2 className="w-3.5 h-3.5 text-rose-500" />}
+                className="text-rose-600 hover:bg-rose-50 hover:border-rose-300 hover:text-rose-700"
+              >
+                {t('common.delete')}
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Voting Status & Countdown */}
-        <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        {/* Multi-round Switcher if multiple rounds exist */}
+        {allRounds.length > 1 && (
+          <RoundSelector
+            rounds={allRounds}
+            selectedRoundNumber={viewRoundNumber}
+            currentActiveRoundNumber={poll.currentRound}
+            onSelectRound={setViewRoundNumber}
+          />
+        )}
+
+        {/* Poll Header Card */}
+        <div className={`rounded-3xl p-6 sm:p-8 border shadow-sm space-y-4 ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`text-xs font-black uppercase tracking-wider ${currentTheme.classes.primaryText}`}>
+                {isScheduleMode
+                  ? t('schedule.scheduleHeaderBadge')
+                  : currentRoundData.title || t('voting.roundN', { round: currentRoundData.roundNumber })}
+              </span>
+              {currentRoundData.runoffSourceRound && (
+                <span className="text-[11px] text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md font-medium">
+                  {t('voting.runoffFromRound', { round: currentRoundData.runoffSourceRound })}
+                </span>
+              )}
+            </div>
+
+            <h1 className={`text-2xl sm:text-3xl font-black tracking-tight leading-tight ${currentTheme.classes.titleText}`}>
+              {poll.title}
+            </h1>
+
+            {poll.description && (
+              <p className={`text-sm mt-2 leading-relaxed whitespace-pre-wrap ${currentTheme.classes.bodyText}`}>
+                {poll.description}
+              </p>
+            )}
+          </div>
+
+          {/* Voting Status & Countdown */}
+          <div className={`pt-4 border-t flex flex-wrap items-center justify-between gap-3 ${currentTheme.classes.divider}`}>
           <CountdownTimer
             startDate={currentRoundData.startDate}
             endDate={currentRoundData.endDate}
@@ -639,18 +642,18 @@ export const PollVotingPage: React.FC = () => {
       )}
 
       {/* Voting / Response Input Section */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+      <div className={`rounded-3xl p-6 sm:p-8 border shadow-sm space-y-4 ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
+        <div className={`flex items-center justify-between border-b pb-3 ${currentTheme.classes.divider}`}>
+          <h3 className={`text-base font-bold flex items-center gap-2 ${currentTheme.classes.titleText}`}>
             {isScheduleMode ? (
               <>
-                <Calendar className="w-4 h-4 text-indigo-600" />
+                <Calendar className={`w-4 h-4 ${currentTheme.classes.primaryText}`} />
                 <span>{t('schedule.votingSectionTitle')}</span>
               </>
             ) : (
               <>
                 <span>{t('voting.optionsTitle')}</span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
                   {t('voting.totalOptionsCount', { count: currentRoundData.options.length })}
                 </span>
               </>
@@ -658,7 +661,7 @@ export const PollVotingPage: React.FC = () => {
           </h3>
 
           {!isScheduleMode && !isSingleChoice && isVotingOpen && (
-            <span className="text-xs font-bold text-indigo-600">
+            <span className={`text-xs font-bold ${currentTheme.classes.primaryText}`}>
               {t('voting.selectedOptionsCount', {
                 selected: selectedOptionIds.length,
                 max: currentRoundData.maxChoices,
@@ -696,6 +699,7 @@ export const PollVotingPage: React.FC = () => {
                   isSingleChoice={isSingleChoice}
                   isDisabled={isDisabled}
                   onToggle={handleToggleOption}
+                  theme={currentTheme}
                 />
               );
             })}
@@ -704,11 +708,11 @@ export const PollVotingPage: React.FC = () => {
 
         {/* Schedule Comment Input */}
         {isScheduleMode && isVotingOpen && (
-          <div className="pt-3 border-t border-slate-100">
-            <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+          <div className={`pt-3 border-t ${currentTheme.classes.divider}`}>
+            <label className={`block text-xs font-bold mb-1.5 flex items-center gap-1.5 ${currentTheme.classes.bodyText}`}>
+              <MessageSquare className={`w-3.5 h-3.5 ${currentTheme.classes.primaryText}`} />
               <span>{t('schedule.commentLabel')}</span>
-              <span className="text-[11px] text-slate-400 font-normal">({t('schedule.optional')})</span>
+              <span className={`text-[11px] font-normal ${currentTheme.classes.mutedText}`}>({t('schedule.optional')})</span>
             </label>
             <input
               type="text"
@@ -722,12 +726,12 @@ export const PollVotingPage: React.FC = () => {
       </div>
 
       {/* Action Footer & User State (Sticky bar) */}
-      <div className="sticky bottom-4 z-30 bg-white/95 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className={`sticky bottom-4 z-30 backdrop-blur-md p-4 sm:p-5 rounded-2xl border shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
         {/* User state indicator / Name Input */}
-        <div className="text-xs text-slate-600 w-full sm:w-auto text-center sm:text-left">
+        <div className={`text-xs w-full sm:w-auto text-center sm:text-left ${currentTheme.classes.bodyText}`}>
           {currentUser ? (
             <div>
-              <span className="font-semibold text-slate-900">
+              <span className={`font-semibold ${currentTheme.classes.titleText}`}>
                 {t('voting.loggedInAs', { name: currentUser.displayName || t('common.user') })}
               </span>
               {userVote && (
@@ -744,7 +748,7 @@ export const PollVotingPage: React.FC = () => {
           ) : isAnonymousAllowed ? (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
               <div className="w-full sm:w-60 text-left">
-                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                <label className={`block text-[11px] font-bold mb-1 ${currentTheme.classes.bodyText}`}>
                   {t('voting.anonNameLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -795,7 +799,7 @@ export const PollVotingPage: React.FC = () => {
                   : selectedOptionIds.length === 0) ||
                 (!currentUser && !anonName.trim())
               }
-              className="w-full sm:w-auto px-8 shadow-md"
+              className={`w-full sm:w-auto px-8 shadow-md ${!userVote && isVotingOpen ? currentTheme.classes.primaryBtn : ''}`}
             >
               {isVotingClosed
                 ? t('voting.statusClosed')
@@ -825,7 +829,7 @@ export const PollVotingPage: React.FC = () => {
 
       {/* Realtime Attendance Matrix Table for Schedule Mode (Chouseisan Style) */}
       {isScheduleMode && scheduleSummary && (poll.isPublicResult || isAdmin) && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+        <div className={`rounded-3xl p-6 sm:p-8 border shadow-sm space-y-4 ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
           <ScheduleResultMatrix
             poll={poll}
             round={currentRoundData}
@@ -867,6 +871,7 @@ export const PollVotingPage: React.FC = () => {
           navigate('/');
         }}
       />
+      </div>
     </div>
   );
 };

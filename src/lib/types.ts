@@ -38,6 +38,7 @@ export interface Poll {
   currentRound: number;
   totalRounds: number;
   pollType?: 'poll' | 'schedule'; // 'poll' (standard voting) | 'schedule' (chouseisan-style schedule adjustment)
+  theme?: string; // Design theme ID (defaults to 'default')
 }
 
 export interface Vote {
