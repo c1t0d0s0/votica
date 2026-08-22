@@ -41,72 +41,88 @@ export const HomePage: React.FC = () => {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10">
 
-      {/* Main Creation Hero Section (2 Large Side-by-Side Cards) */}
+      {/* Main Creation Hero Section (2 High-Affordance Big CTA Buttons) */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {/* Card 1: Create Schedule Adjustment */}
+        {/* Button 1: Create Schedule Adjustment */}
         <Link
           to="/create-schedule"
-          className="group relative bg-white hover:bg-gradient-to-br hover:from-white hover:to-indigo-50/40 p-6 sm:p-7 rounded-3xl border-2 border-slate-200 hover:border-indigo-400 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+          className="group relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-blue-800 text-white p-6 sm:p-8 rounded-3xl shadow-lg shadow-indigo-600/25 hover:shadow-2xl hover:shadow-indigo-600/40 hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between cursor-pointer border border-indigo-400/30"
         >
-          <div className="space-y-4">
+          {/* Background Decorative Watermark Icon */}
+          <div className="absolute -right-4 -bottom-4 text-white/10 pointer-events-none group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+            <Calendar className="w-36 h-36" strokeWidth={1.5} />
+          </div>
+
+          <div className="relative z-10 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-xs">
-                <Calendar className="w-6 h-6" />
+              <div className="w-13 h-13 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-inner group-hover:scale-110 transition-transform">
+                <Calendar className="w-7 h-7 stroke-[2.5]" />
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 group-hover:bg-indigo-100 transition-colors">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30 shadow-xs">
                 <Clock className="w-3.5 h-3.5" />
                 <span>{t('home.createScheduleCardBadge')}</span>
               </span>
             </div>
 
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight group-hover:text-indigo-600 transition-colors">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight drop-shadow-xs">
                 {t('home.createScheduleCardTitle')}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
+              <p className="text-xs sm:text-sm text-indigo-100/90 mt-2.5 leading-relaxed max-w-sm">
                 {t('home.createScheduleCardDesc')}
               </p>
             </div>
           </div>
 
-          <div className="pt-6 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600 group-hover:text-indigo-700">
-            <span>{t('schedule.homeCreateBtn')}</span>
-            <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center group-hover:translate-x-1 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-              <ArrowRight className="w-4 h-4" />
+          <div className="relative z-10 pt-6 mt-6 border-t border-white/15 flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-100 tracking-wide">
+              {t('schedule.tabScheduleAdjust')}
+            </span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-indigo-700 font-bold text-xs shadow-md group-hover:bg-indigo-50 group-hover:px-5 transition-all">
+              <span>{t('schedule.homeCreateBtn')}</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
         </Link>
 
-        {/* Card 2: Create Standard Poll */}
+        {/* Button 2: Create Standard Poll */}
         <Link
           to="/create"
-          className="group relative bg-white hover:bg-gradient-to-br hover:from-white hover:to-pink-50/40 p-6 sm:p-7 rounded-3xl border-2 border-slate-200 hover:border-pink-400 shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+          className="group relative overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-800 text-white p-6 sm:p-8 rounded-3xl shadow-lg shadow-pink-600/25 hover:shadow-2xl hover:shadow-pink-600/40 hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between cursor-pointer border border-pink-400/30"
         >
-          <div className="space-y-4">
+          {/* Background Decorative Watermark Icon */}
+          <div className="absolute -right-4 -bottom-4 text-white/10 pointer-events-none group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
+            <Vote className="w-36 h-36" strokeWidth={1.5} />
+          </div>
+
+          <div className="relative z-10 space-y-4">
             <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center text-pink-600 group-hover:scale-110 group-hover:bg-pink-600 group-hover:text-white transition-all shadow-xs">
-                <Vote className="w-6 h-6" />
+              <div className="w-13 h-13 rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-inner group-hover:scale-110 transition-transform">
+                <Vote className="w-7 h-7 stroke-[2.5]" />
               </div>
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full bg-pink-50 text-pink-700 border border-pink-200 group-hover:bg-pink-100 transition-colors">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30 shadow-xs">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{t('home.createPollCardBadge')}</span>
               </span>
             </div>
 
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight group-hover:text-pink-600 transition-colors">
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight drop-shadow-xs">
                 {t('home.createPollCardTitle')}
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-2 leading-relaxed">
+              <p className="text-xs sm:text-sm text-pink-100/90 mt-2.5 leading-relaxed max-w-sm">
                 {t('home.createPollCardDesc')}
               </p>
             </div>
           </div>
 
-          <div className="pt-6 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-pink-600 group-hover:text-pink-700">
-            <span>{t('common.createPoll')}</span>
-            <div className="w-8 h-8 rounded-full bg-pink-50 flex items-center justify-center group-hover:translate-x-1 group-hover:bg-pink-600 group-hover:text-white transition-all">
-              <ArrowRight className="w-4 h-4" />
+          <div className="relative z-10 pt-6 mt-6 border-t border-white/15 flex items-center justify-between">
+            <span className="text-xs font-bold text-pink-100 tracking-wide">
+              {t('schedule.tabStandardPoll')}
+            </span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-pink-700 font-bold text-xs shadow-md group-hover:bg-pink-50 group-hover:px-5 transition-all">
+              <span>{t('common.createPoll')}</span>
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </div>
           </div>
         </Link>
