@@ -73,17 +73,17 @@ export const ScheduleQuickDatePicker: React.FC<ScheduleQuickDatePickerProps> = (
     onAddDates(list);
   };
 
-  const timeOptions = [
-    '18:00〜',
-    '18:30〜',
-    '19:00〜',
-    '19:30〜',
-    '20:00〜',
-    '12:00〜',
-    '13:00〜',
-    '14:00〜',
-    '終日',
-  ];
+  const generateTimeOptions = (): string[] => {
+    const options: string[] = [];
+    for (let h = 0; h < 24; h++) {
+      options.push(`${h}:00〜`);
+      options.push(`${h}:30〜`);
+    }
+    options.push('終日');
+    return options;
+  };
+
+  const timeOptions = generateTimeOptions();
 
   return (
     <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3.5 sm:p-4 space-y-3">
