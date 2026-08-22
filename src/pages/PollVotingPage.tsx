@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -175,6 +175,13 @@ export const PollVotingPage: React.FC = () => {
   const isAnonymousAllowed = poll?.requireAuth === false;
   const effectiveUserId = currentUser?.uid || (isAnonymousAllowed ? anonUid : undefined);
 
+  // Keep a ref to latest currentRoundData to avoid triggering re-subscription
+  const currentRoundDataRef = useRef<PollRound | null>(null);
+  currentRoundDataRef.current = currentRoundData;
+
+  // Track the current (pollId, round, user) context for which local form state was initialized
+  const initializedKeyRef = useRef<string>('');
+
   // Subscribe to the current user's vote in this view round
   useEffect(() => {
     if (!pollId || !viewRoundNumber || !effectiveUserId) {
@@ -182,38 +189,45 @@ export const PollVotingPage: React.FC = () => {
       setSelectedOptionIds([]);
       setScheduleResponses({});
       setScheduleComment('');
+      initializedKeyRef.current = '';
       return;
     }
 
+    const currentKey = `${pollId}_${viewRoundNumber}_${effectiveUserId}`;
+
     const unsubUserVote = subscribeUserVote(pollId, viewRoundNumber, effectiveUserId, v => {
       setUserVote(v);
-      if (v) {
-        setSelectedOptionIds(v.selectedOptionIds || []);
-        if (v.scheduleResponses) {
-          setScheduleResponses(v.scheduleResponses);
-        } else if (v.selectedOptionIds && currentRoundData) {
-          const resp: Record<string, ScheduleChoice> = {};
-          currentRoundData.options.forEach(opt => {
-            resp[opt.id] = v.selectedOptionIds.includes(opt.id) ? 'circle' : 'cross';
-          });
-          setScheduleResponses(resp);
+
+      const isNewContext = initializedKeyRef.current !== currentKey;
+      if (isNewContext) {
+        initializedKeyRef.current = currentKey;
+        if (v) {
+          setSelectedOptionIds(v.selectedOptionIds || []);
+          if (v.scheduleResponses) {
+            setScheduleResponses(v.scheduleResponses);
+          } else if (v.selectedOptionIds && currentRoundDataRef.current) {
+            const resp: Record<string, ScheduleChoice> = {};
+            currentRoundDataRef.current.options.forEach(opt => {
+              resp[opt.id] = v.selectedOptionIds.includes(opt.id) ? 'circle' : 'cross';
+            });
+            setScheduleResponses(resp);
+          }
+          if (v.comment) {
+            setScheduleComment(v.comment);
+          }
+          if (v.userDisplayName && !anonName) {
+            setAnonName(v.userDisplayName);
+          }
+        } else {
+          setSelectedOptionIds([]);
+          setScheduleResponses({});
+          setScheduleComment('');
         }
-        if (v.comment) {
-          setScheduleComment(v.comment);
-        }
-        if (v.userDisplayName && !anonName) {
-          setAnonName(v.userDisplayName);
-        }
-      } else {
-        setSelectedOptionIds([]);
-        // Default initialize schedule responses with empty or undefined
-        setScheduleResponses({});
-        setScheduleComment('');
       }
     });
 
     return () => unsubUserVote();
-  }, [pollId, viewRoundNumber, effectiveUserId, currentRoundData]);
+  }, [pollId, viewRoundNumber, effectiveUserId]);
 
   if (pollLoading) {
     return (
