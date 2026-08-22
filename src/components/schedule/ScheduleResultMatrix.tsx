@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Poll, PollRound, ScheduleChoice, ScheduleResultSummary } from '../../lib/types';
-import { SCHEDULE_SYMBOLS, formatScheduleExportText, formatScheduleCsv } from '../../lib/scheduleUtils';
+import { SCHEDULE_SYMBOLS, getScheduleSymbol, formatScheduleExportText, formatScheduleCsv } from '../../lib/scheduleUtils';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../common/Button';
@@ -24,13 +24,13 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
   round,
   summary,
 }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
 
   const handleCopyText = async () => {
     try {
-      const text = formatScheduleExportText(poll, round, summary);
+      const text = formatScheduleExportText(poll, round, summary, language);
       await navigator.clipboard.writeText(text);
       setCopied(true);
       showToast('success', t('schedule.toastTextCopied'));
@@ -42,7 +42,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
 
   const handleDownloadCsv = () => {
     try {
-      const csv = formatScheduleCsv(round, summary);
+      const csv = formatScheduleCsv(round, summary, language);
       // UTF-8 BOM for Excel compatibility with Japanese
       const bom = '\uFEFF';
       const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
@@ -68,11 +68,12 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
       return <span className="text-slate-300 font-bold">-</span>;
     }
     const meta = SCHEDULE_SYMBOLS[choice];
+    const symbol = getScheduleSymbol(choice, language);
     return (
       <span
         className={`inline-flex items-center justify-center w-7 h-7 rounded-lg font-bold text-sm ${meta.bgClass} ${meta.borderClass} ${meta.textClass} border`}
       >
-        {meta.symbol}
+        {symbol}
       </span>
     );
   };
@@ -226,13 +227,13 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                     <td className="py-3.5 px-3 text-center">
                       <div className="inline-flex items-center gap-1.5 text-[11px] font-bold">
                         <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                          ◯ {optSummary.circleCount}
+                          {getScheduleSymbol('circle', language)} {optSummary.circleCount}
                         </span>
                         <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                          △ {optSummary.triangleCount}
+                          {getScheduleSymbol('triangle', language)} {optSummary.triangleCount}
                         </span>
                         <span className="text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
-                          ✗ {optSummary.crossCount}
+                          {getScheduleSymbol('cross', language)} {optSummary.crossCount}
                         </span>
                       </div>
                     </td>

@@ -1,5 +1,5 @@
 import { PollOption, ScheduleChoice } from '../../lib/types';
-import { SCHEDULE_SYMBOLS } from '../../lib/scheduleUtils';
+import { SCHEDULE_SYMBOLS, getScheduleSymbol } from '../../lib/scheduleUtils';
 import { useTranslation } from '../../contexts/LanguageContext';
 
 interface ScheduleVotingTableProps {
@@ -21,17 +21,6 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
 
   const choices: ScheduleChoice[] = ['circle', 'triangle', 'cross'];
 
-  const getChoiceIcon = (choice: ScheduleChoice) => {
-    switch (choice) {
-      case 'circle':
-        return <span className="font-bold text-base leading-none">◯</span>;
-      case 'triangle':
-        return <span className="font-bold text-base leading-none">△</span>;
-      case 'cross':
-        return <span className="font-bold text-base leading-none">✗</span>;
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Batch Select Controls */}
@@ -47,7 +36,7 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
               onClick={() => onSetAllResponses('circle')}
               className="px-2.5 py-1 text-xs font-bold rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
             >
-              <span>◯</span>
+              <span>{getScheduleSymbol('circle', language)}</span>
               <span>{t('schedule.allCircle')}</span>
             </button>
             <button
@@ -55,7 +44,7 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
               onClick={() => onSetAllResponses('triangle')}
               className="px-2.5 py-1 text-xs font-bold rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
             >
-              <span>△</span>
+              <span>{getScheduleSymbol('triangle', language)}</span>
               <span>{t('schedule.allTriangle')}</span>
             </button>
             <button
@@ -63,7 +52,7 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
               onClick={() => onSetAllResponses('cross')}
               className="px-2.5 py-1 text-xs font-bold rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
             >
-              <span>✗</span>
+              <span>{getScheduleSymbol('cross', language)}</span>
               <span>{t('schedule.allCross')}</span>
             </button>
           </div>
@@ -117,7 +106,9 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
                           : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100/80 hover:text-slate-800'
                       } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <div className="text-base sm:text-lg">{getChoiceIcon(c)}</div>
+                      <div className="text-base sm:text-lg font-bold leading-none">
+                        {getScheduleSymbol(c, language)}
+                      </div>
                       <span className="text-[10px] sm:text-[11px] font-medium leading-none">
                         {language === 'ja' ? meta.labelJa.split(' ')[0] : meta.labelEn}
                       </span>

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   parseScheduleCandidateLines,
   candidateLinesToOptions,
+  getScheduleSymbol,
   calculateScheduleResults,
   formatScheduleExportText,
   formatScheduleCsv,
@@ -176,20 +177,45 @@ describe('scheduleUtils', () => {
       },
     ];
 
-    it('should format export text correctly', () => {
+    it('should format export text correctly in Japanese', () => {
       const summary = calculateScheduleResults(round, votes);
-      const text = formatScheduleExportText(poll, round, summary);
+      const text = formatScheduleExportText(poll, round, summary, 'ja');
       expect(text).toContain('【日程調整結果】チーム歓迎会 日程調整');
       expect(text).toContain('8/25(月) 19:00〜');
       expect(text).toContain('田中');
       expect(text).toContain('楽しみです');
+      expect(text).toContain('◯:1');
     });
 
-    it('should format CSV correctly', () => {
+    it('should format export text correctly in English', () => {
       const summary = calculateScheduleResults(round, votes);
-      const csv = formatScheduleCsv(round, summary);
-      expect(csv).toContain('"回答者","8/25(月) 19:00〜","コメント","回答日時"');
-      expect(csv).toContain('"田中",◯,"楽しみです"');
+      const text = formatScheduleExportText(poll, round, summary, 'en');
+      expect(text).toContain('[Schedule Results] チーム歓迎会 日程調整');
+      expect(text).toContain('8/25(月) 19:00〜');
+      expect(text).toContain('田中');
+      expect(text).toContain('Comment: 楽しみです');
+      expect(text).toContain('✓:1');
+    });
+
+    it('should format CSV correctly in Japanese and English', () => {
+      const summary = calculateScheduleResults(round, votes);
+      const csvJa = formatScheduleCsv(round, summary, 'ja');
+      expect(csvJa).toContain('"回答者","8/25(月) 19:00〜","コメント","回答日時"');
+      expect(csvJa).toContain('"田中",◯,"楽しみです"');
+
+      const csvEn = formatScheduleCsv(round, summary, 'en');
+      expect(csvEn).toContain('"Respondent","8/25(月) 19:00〜","Comment","Date Submitted"');
+      expect(csvEn).toContain('"田中",✓,"楽しみです"');
+    });
+
+    it('should map symbols correctly according to language', () => {
+      expect(getScheduleSymbol('circle', 'ja')).toBe('◯');
+      expect(getScheduleSymbol('triangle', 'ja')).toBe('△');
+      expect(getScheduleSymbol('cross', 'ja')).toBe('✗');
+
+      expect(getScheduleSymbol('circle', 'en')).toBe('✓');
+      expect(getScheduleSymbol('triangle', 'en')).toBe('?');
+      expect(getScheduleSymbol('cross', 'en')).toBe('✕');
     });
   });
 });

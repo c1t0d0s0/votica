@@ -1,9 +1,10 @@
 import { Poll, PollRound, PollOption, Vote, ScheduleChoice, ScheduleOptionSummary, ScheduleVoterRow, ScheduleResultSummary } from './types';
 import { getOptionColor } from './runoffUtils';
 
-export const SCHEDULE_SYMBOLS: Record<ScheduleChoice, { symbol: string; labelJa: string; labelEn: string; colorClass: string; bgClass: string; borderClass: string; textClass: string }> = {
+export const SCHEDULE_SYMBOLS: Record<ScheduleChoice, { symbolJa: string; symbolEn: string; labelJa: string; labelEn: string; colorClass: string; bgClass: string; borderClass: string; textClass: string }> = {
   circle: {
-    symbol: '◯',
+    symbolJa: '◯',
+    symbolEn: '✓',
     labelJa: '参加',
     labelEn: 'Available',
     colorClass: 'text-emerald-600',
@@ -12,7 +13,8 @@ export const SCHEDULE_SYMBOLS: Record<ScheduleChoice, { symbol: string; labelJa:
     textClass: 'text-emerald-700',
   },
   triangle: {
-    symbol: '△',
+    symbolJa: '△',
+    symbolEn: '?',
     labelJa: '未定 / 条件付き',
     labelEn: 'Maybe',
     colorClass: 'text-amber-500',
@@ -21,7 +23,8 @@ export const SCHEDULE_SYMBOLS: Record<ScheduleChoice, { symbol: string; labelJa:
     textClass: 'text-amber-700',
   },
   cross: {
-    symbol: '✗',
+    symbolJa: '✗',
+    symbolEn: '✕',
     labelJa: '不参加',
     labelEn: 'Unavailable',
     colorClass: 'text-rose-500',
@@ -30,6 +33,15 @@ export const SCHEDULE_SYMBOLS: Record<ScheduleChoice, { symbol: string; labelJa:
     textClass: 'text-rose-700',
   },
 };
+
+/**
+ * Returns the localized symbol for a choice (ja: ◯/△/✗, en: ✓/?/✕).
+ */
+export function getScheduleSymbol(choice: ScheduleChoice, language: string = 'ja'): string {
+  const meta = SCHEDULE_SYMBOLS[choice];
+  if (!meta) return '';
+  return language === 'en' ? meta.symbolEn : meta.symbolJa;
+}
 
 /**
  * Converts a raw multiline string of candidate dates into an array of trimmed date strings.
@@ -192,46 +204,52 @@ export function calculateScheduleResults(round: PollRound, votes: Vote[]): Sched
 export function formatScheduleExportText(
   poll: Poll,
   round: PollRound,
-  summary: ScheduleResultSummary
+  summary: ScheduleResultSummary,
+  language: 'ja' | 'en' = 'ja'
 ): string {
+  const isEn = language === 'en';
+  const symCircle = getScheduleSymbol('circle', language);
+  const symTriangle = getScheduleSymbol('triangle', language);
+  const symCross = getScheduleSymbol('cross', language);
+
   const lines: string[] = [];
-  lines.push(`【日程調整結果】${poll.title}`);
+  lines.push(isEn ? `[Schedule Results] ${poll.title}` : `【日程調整結果】${poll.title}`);
   if (poll.description) {
     lines.push(`${poll.description}`);
   }
-  lines.push(`回答者数: ${summary.totalVoters}名`);
+  lines.push(isEn ? `Total Respondents: ${summary.totalVoters}` : `回答者数: ${summary.totalVoters}名`);
   lines.push('----------------------------');
 
   if (summary.bestOptions.length > 0) {
-    lines.push(`★ おすすめ候補日:`);
+    lines.push(isEn ? `★ Best Candidate Dates:` : `★ おすすめ候補日:`);
     summary.bestOptions.forEach(best => {
       lines.push(
-        `  👑 ${best.option.text} (◯:${best.circleCount}人 / △:${best.triangleCount}人 / ✗:${best.crossCount}人)`
+        `  👑 ${best.option.text} (${symCircle}:${best.circleCount} / ${symTriangle}:${best.triangleCount} / ${symCross}:${best.crossCount})`
       );
     });
     lines.push('----------------------------');
   }
 
-  lines.push('【日程別 出欠状況】');
+  lines.push(isEn ? '[Attendance by Date]' : '【日程別 出欠状況】');
   summary.options.forEach(optSummary => {
     const bestMark = optSummary.isBest ? '👑 ' : '';
     lines.push(
-      `${bestMark}${optSummary.option.text} → ◯:${optSummary.circleCount} △:${optSummary.triangleCount} ✗:${optSummary.crossCount} (計${optSummary.score}pt)`
+      `${bestMark}${optSummary.option.text} → ${symCircle}:${optSummary.circleCount} ${symTriangle}:${optSummary.triangleCount} ${symCross}:${optSummary.crossCount} (${isEn ? 'Total ' : '計'}${optSummary.score}pt)`
     );
   });
 
   if (summary.voters.length > 0) {
     lines.push('----------------------------');
-    lines.push('【参加者一覧】');
+    lines.push(isEn ? '[Participants]' : '【参加者一覧】');
     summary.voters.forEach(v => {
       const respStr = round.options
         .map(opt => {
           const choice = v.responses[opt.id];
-          const sym = choice === 'circle' ? '◯' : choice === 'triangle' ? '△' : choice === 'cross' ? '✗' : '-';
+          const sym = choice ? getScheduleSymbol(choice, language) : '-';
           return `${opt.text}: ${sym}`;
         })
         .join(' | ');
-      const commentStr = v.comment ? ` (コメント: ${v.comment})` : '';
+      const commentStr = v.comment ? ` (${isEn ? 'Comment: ' : 'コメント: '}${v.comment})` : '';
       lines.push(`・${v.userDisplayName}${commentStr}\n   [${respStr}]`);
     });
   }
@@ -242,8 +260,22 @@ export function formatScheduleExportText(
 /**
  * Generates CSV string for schedule results.
  */
-export function formatScheduleCsv(round: PollRound, summary: ScheduleResultSummary): string {
-  const header = ['"回答者"', ...round.options.map(o => `"${o.text.replace(/"/g, '""')}"`), '"コメント"', '"回答日時"'];
+export function formatScheduleCsv(
+  round: PollRound,
+  summary: ScheduleResultSummary,
+  language: 'ja' | 'en' = 'ja'
+): string {
+  const isEn = language === 'en';
+  const symCircle = getScheduleSymbol('circle', language);
+  const symTriangle = getScheduleSymbol('triangle', language);
+  const symCross = getScheduleSymbol('cross', language);
+
+  const header = [
+    isEn ? '"Respondent"' : '"回答者"',
+    ...round.options.map(o => `"${o.text.replace(/"/g, '""')}"`),
+    isEn ? '"Comment"' : '"コメント"',
+    isEn ? '"Date Submitted"' : '"回答日時"',
+  ];
   const rows: string[][] = [header];
 
   summary.voters.forEach(v => {
@@ -251,7 +283,7 @@ export function formatScheduleCsv(round: PollRound, summary: ScheduleResultSumma
       `"${v.userDisplayName.replace(/"/g, '""')}"`,
       ...round.options.map(opt => {
         const choice = v.responses[opt.id];
-        return choice === 'circle' ? '◯' : choice === 'triangle' ? '△' : choice === 'cross' ? '✗' : '-';
+        return choice ? getScheduleSymbol(choice, language) : '-';
       }),
       `"${(v.comment || '').replace(/"/g, '""')}"`,
       `"${v.votedAt}"`,
@@ -261,25 +293,45 @@ export function formatScheduleCsv(round: PollRound, summary: ScheduleResultSumma
 
   // Add Summary Rows
   rows.push([]);
-  rows.push(['【集計: ◯】', ...round.options.map(opt => {
-    const optSummary = summary.options.find(o => o.option.id === opt.id);
-    return String(optSummary?.circleCount ?? 0);
-  }), '', '']);
+  rows.push([
+    isEn ? `[Total ${symCircle}]` : `【集計: ${symCircle}】`,
+    ...round.options.map(opt => {
+      const optSummary = summary.options.find(o => o.option.id === opt.id);
+      return String(optSummary?.circleCount ?? 0);
+    }),
+    '',
+    '',
+  ]);
 
-  rows.push(['【集計: △】', ...round.options.map(opt => {
-    const optSummary = summary.options.find(o => o.option.id === opt.id);
-    return String(optSummary?.triangleCount ?? 0);
-  }), '', '']);
+  rows.push([
+    isEn ? `[Total ${symTriangle}]` : `【集計: ${symTriangle}】`,
+    ...round.options.map(opt => {
+      const optSummary = summary.options.find(o => o.option.id === opt.id);
+      return String(optSummary?.triangleCount ?? 0);
+    }),
+    '',
+    '',
+  ]);
 
-  rows.push(['【集計: ✗】', ...round.options.map(opt => {
-    const optSummary = summary.options.find(o => o.option.id === opt.id);
-    return String(optSummary?.crossCount ?? 0);
-  }), '', '']);
+  rows.push([
+    isEn ? `[Total ${symCross}]` : `【集計: ${symCross}】`,
+    ...round.options.map(opt => {
+      const optSummary = summary.options.find(o => o.option.id === opt.id);
+      return String(optSummary?.crossCount ?? 0);
+    }),
+    '',
+    '',
+  ]);
 
-  rows.push(['【スコア】', ...round.options.map(opt => {
-    const optSummary = summary.options.find(o => o.option.id === opt.id);
-    return String(optSummary?.score ?? 0);
-  }), '', '']);
+  rows.push([
+    isEn ? '[Score]' : '【スコア】',
+    ...round.options.map(opt => {
+      const optSummary = summary.options.find(o => o.option.id === opt.id);
+      return String(optSummary?.score ?? 0);
+    }),
+    '',
+    '',
+  ]);
 
   return rows.map(r => r.join(',')).join('\n');
 }
