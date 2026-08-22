@@ -19,7 +19,7 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
 }) => {
   const { t, language } = useTranslation();
 
-  const choices: ScheduleChoice[] = ['circle', 'triangle', 'cross', 'question'];
+  const choices: ScheduleChoice[] = ['circle', 'triangle', 'cross'];
 
   const getChoiceIcon = (choice: ScheduleChoice) => {
     switch (choice) {
@@ -29,8 +29,6 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
         return <span className="font-bold text-base leading-none">△</span>;
       case 'cross':
         return <span className="font-bold text-base leading-none">✗</span>;
-      case 'question':
-        return <span className="font-bold text-base leading-none">？</span>;
     }
   };
 
@@ -101,8 +99,8 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
                 </div>
               </div>
 
-              {/* 4-Choice Button Group */}
-              <div className="grid grid-cols-4 gap-1.5 sm:gap-2 shrink-0">
+              {/* 3-Choice Button Group */}
+              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 shrink-0 min-w-[190px] sm:min-w-[210px]">
                 {choices.map(c => {
                   const meta = SCHEDULE_SYMBOLS[c];
                   const isSelected = currentChoice === c;

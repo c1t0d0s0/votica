@@ -19,7 +19,7 @@ export interface PollRound {
   createdAt?: string;
 }
 
-export type ScheduleChoice = 'circle' | 'triangle' | 'cross' | 'question';
+export type ScheduleChoice = 'circle' | 'triangle' | 'cross';
 
 export interface Poll {
   id: string;
@@ -46,7 +46,7 @@ export interface Vote {
   userDisplayName?: string;
   userPhotoURL?: string;
   selectedOptionIds: string[];
-  scheduleResponses?: Record<string, ScheduleChoice>; // optionId -> 'circle' | 'triangle' | 'cross' | 'question'
+  scheduleResponses?: Record<string, ScheduleChoice>; // optionId -> 'circle' | 'triangle' | 'cross'
   comment?: string; // Optional short comment from voter
   votedAt: string;
 }
@@ -56,7 +56,6 @@ export interface ScheduleOptionSummary {
   circleCount: number;
   triangleCount: number;
   crossCount: number;
-  questionCount: number;
   score: number; // circle * 2 + triangle * 1
   rank: number;
   isBest?: boolean;

@@ -29,15 +29,6 @@ export const SCHEDULE_SYMBOLS: Record<ScheduleChoice, { symbol: string; labelJa:
     borderClass: 'border-rose-300',
     textClass: 'text-rose-700',
   },
-  question: {
-    symbol: '？',
-    labelJa: '未定 / 要相談',
-    labelEn: 'Pending',
-    colorClass: 'text-slate-400',
-    bgClass: 'bg-slate-50 hover:bg-slate-100',
-    borderClass: 'border-slate-300',
-    textClass: 'text-slate-600',
-  },
 };
 
 /**
@@ -111,13 +102,11 @@ export function calculateScheduleResults(round: PollRound, votes: Vote[]): Sched
     circleCount: number;
     triangleCount: number;
     crossCount: number;
-    questionCount: number;
     score: number;
   }> = round.options.map((opt, idx) => {
     let circleCount = 0;
     let triangleCount = 0;
     let crossCount = 0;
-    let questionCount = 0;
 
     voterRows.forEach(voter => {
       const choice = voter.responses[opt.id];
@@ -127,8 +116,6 @@ export function calculateScheduleResults(round: PollRound, votes: Vote[]): Sched
         triangleCount++;
       } else if (choice === 'cross') {
         crossCount++;
-      } else if (choice === 'question') {
-        questionCount++;
       }
     });
 
@@ -143,7 +130,6 @@ export function calculateScheduleResults(round: PollRound, votes: Vote[]): Sched
       circleCount,
       triangleCount,
       crossCount,
-      questionCount,
       score,
     };
   });
@@ -241,7 +227,7 @@ export function formatScheduleExportText(
       const respStr = round.options
         .map(opt => {
           const choice = v.responses[opt.id];
-          const sym = choice === 'circle' ? '◯' : choice === 'triangle' ? '△' : choice === 'cross' ? '✗' : '？';
+          const sym = choice === 'circle' ? '◯' : choice === 'triangle' ? '△' : choice === 'cross' ? '✗' : '-';
           return `${opt.text}: ${sym}`;
         })
         .join(' | ');
@@ -265,7 +251,7 @@ export function formatScheduleCsv(round: PollRound, summary: ScheduleResultSumma
       `"${v.userDisplayName.replace(/"/g, '""')}"`,
       ...round.options.map(opt => {
         const choice = v.responses[opt.id];
-        return choice === 'circle' ? '◯' : choice === 'triangle' ? '△' : choice === 'cross' ? '✗' : '？';
+        return choice === 'circle' ? '◯' : choice === 'triangle' ? '△' : choice === 'cross' ? '✗' : '-';
       }),
       `"${(v.comment || '').replace(/"/g, '""')}"`,
       `"${v.votedAt}"`,

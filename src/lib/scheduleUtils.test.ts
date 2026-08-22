@@ -92,7 +92,7 @@ describe('scheduleUtils', () => {
           scheduleResponses: {
             opt_1: 'circle',
             opt_2: 'cross',
-            opt_3: 'question',
+            opt_3: 'cross',
           },
           votedAt: '2026-08-25T14:00:00Z',
         },
@@ -121,12 +121,11 @@ describe('scheduleUtils', () => {
       expect(opt2?.rank).toBe(2);
       expect(opt2?.isBest).toBe(false);
 
-      // opt_3: 0 circle, 1 triangle, 1 cross, 1 question -> score = 1, rank = 3
+      // opt_3: 0 circle, 1 triangle, 2 cross -> score = 1, rank = 3
       const opt3 = summary.options.find(o => o.option.id === 'opt_3');
       expect(opt3?.circleCount).toBe(0);
       expect(opt3?.triangleCount).toBe(1);
-      expect(opt3?.crossCount).toBe(1);
-      expect(opt3?.questionCount).toBe(1);
+      expect(opt3?.crossCount).toBe(2);
       expect(opt3?.score).toBe(1);
       expect(opt3?.rank).toBe(3);
 
