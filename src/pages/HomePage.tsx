@@ -103,16 +103,20 @@ export const HomePage: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
             <Link
               to="/create-schedule"
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100/70 px-2.5 py-1 rounded-lg transition-colors border border-indigo-200"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100/70 px-2.5 py-1 rounded-lg transition-colors border border-indigo-200 shrink-0"
             >
               <Calendar className="w-3 h-3" />
               <span>{t('schedule.homeCreateBtn')}</span>
             </Link>
-            <Link to="/create" className="text-xs font-bold text-indigo-600 hover:text-indigo-700">
-              {t('common.newPoll')}
+            <Link
+              to="/create"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100/70 px-2.5 py-1 rounded-lg transition-colors border border-indigo-200 shrink-0"
+            >
+              <PlusCircle className="w-3 h-3" />
+              <span>{t('common.createPoll')}</span>
             </Link>
           </div>
         </div>
