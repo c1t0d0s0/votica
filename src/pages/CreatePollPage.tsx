@@ -153,14 +153,14 @@ export const CreatePollPage: React.FC = () => {
       <div className="flex items-center gap-2 mb-6 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
         <button
           type="button"
-          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-white text-indigo-600 shadow-xs cursor-default"
+          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-white text-rose-600 shadow-xs cursor-default"
         >
           <Vote className="w-3.5 h-3.5" />
           <span>{t('schedule.tabStandardPoll')}</span>
         </button>
         <Link
           to="/create-schedule"
-          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
+          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors"
         >
           <Calendar className="w-3.5 h-3.5" />
           <span>{t('schedule.tabScheduleAdjust')}</span>
@@ -169,7 +169,7 @@ export const CreatePollPage: React.FC = () => {
 
       {/* Page Header */}
       <div className="mb-8 text-center sm:text-left">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-bold mb-2">
           <Sparkles className="w-3.5 h-3.5" />
           <span>{t('create.badge')}</span>
         </div>

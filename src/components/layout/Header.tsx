@@ -63,25 +63,25 @@ export const Header: React.FC = () => {
               <span>{language === 'ja' ? 'EN' : '日本語'}</span>
             </button>
 
-            {/* Create Schedule Button */}
+            {/* Create Schedule Button (Blue Theme) */}
             <Link to="/create-schedule">
               <Button
-                variant="outline"
+                variant="primary"
                 size="sm"
-                leftIcon={<Calendar className="w-3.5 h-3.5 text-indigo-600" />}
-                className="hidden sm:inline-flex shadow-xs border-indigo-200 hover:bg-indigo-50 text-indigo-700 font-bold text-xs"
+                leftIcon={<Calendar className="w-3.5 h-3.5" />}
+                className="hidden sm:inline-flex shadow-xs bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
               >
                 {t('schedule.createHeaderBtn')}
               </Button>
             </Link>
 
-            {/* Create Poll Button */}
+            {/* Create Poll Button (Red/Rose Theme) */}
             <Link to="/create">
               <Button
                 variant="primary"
                 size="sm"
-                leftIcon={<PlusCircle className="w-4 h-4" />}
-                className="hidden sm:inline-flex shadow-sm text-xs"
+                leftIcon={<PlusCircle className="w-3.5 h-3.5" />}
+                className="hidden sm:inline-flex shadow-xs bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs border-none"
               >
                 {t('common.createPoll')}
               </Button>
@@ -156,21 +156,21 @@ export const Header: React.FC = () => {
                       </Link>
 
                       <Link
-                        to="/create"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-xs text-indigo-600 hover:bg-indigo-50 font-medium transition-colors sm:hidden"
-                      >
-                        <PlusCircle className="w-4 h-4" />
-                        {t('header.createNewPoll')}
-                      </Link>
-
-                      <Link
                         to="/create-schedule"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-2 px-4 py-2 text-xs text-indigo-600 hover:bg-indigo-50 font-medium transition-colors sm:hidden"
+                        className="flex items-center gap-2 px-4 py-2 text-xs text-indigo-600 hover:bg-indigo-50 font-bold transition-colors sm:hidden"
                       >
                         <Calendar className="w-4 h-4" />
                         {t('schedule.createNewSchedule')}
+                      </Link>
+
+                      <Link
+                        to="/create"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-2 px-4 py-2 text-xs text-rose-600 hover:bg-rose-50 font-bold transition-colors sm:hidden"
+                      >
+                        <PlusCircle className="w-4 h-4" />
+                        {t('header.createNewPoll')}
                       </Link>
 
                       <button
