@@ -90,9 +90,11 @@ export const translations = {
       enterPollIdError: '投票IDまたはURLを入力してください',
       createScheduleCardTitle: '日程調整を作成',
       createScheduleCardDesc: '候補日時を設定し、参加者の出欠（◯・△・✕）をスピーディに集約・調整',
+      createScheduleCardDescShort: '候補日を設定して出欠（◯・△・✕）をすばやく集約',
       createScheduleCardBadge: '出欠・イベント調整',
       createPollCardTitle: '投票を作成',
       createPollCardDesc: '選択肢（最大20個）を設定し、多数決や同率1位時の決選投票をスマートに実施',
+      createPollCardDescShort: '選択肢を設定して多数決や決選投票を実施',
       createPollCardBadge: 'アンケート・意思決定',
     },
     create: {
@@ -647,9 +649,11 @@ export const translations = {
       enterPollIdError: 'Please enter a Poll ID or URL',
       createScheduleCardTitle: 'Create Schedule',
       createScheduleCardDesc: 'Set candidate dates & times to quickly collect availability (✓ / ? / ✕)',
+      createScheduleCardDescShort: 'Set candidate dates to collect availability (✓ / ✕)',
       createScheduleCardBadge: 'Availability & Event Planning',
       createPollCardTitle: 'Create Poll',
       createPollCardDesc: 'Set options (up to 20) with single/multi choices & automatic runoff support',
+      createPollCardDescShort: 'Multi-choice voting with instant runoff support',
       createPollCardBadge: 'Survey & Decision Making',
     },
     create: {
