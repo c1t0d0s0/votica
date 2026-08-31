@@ -26,7 +26,7 @@ export const Footer: React.FC = () => {
               <span>{t('footer.ossLicenses')}</span>
             </button>
             <span className="text-slate-300">|</span>
-            <span>&copy; {new Date().getFullYear()} cuio.net</span>
+            <span>&copy; {new Date().getFullYear()} c1t0d0s0</span>
           </div>
         </div>
       </footer>
