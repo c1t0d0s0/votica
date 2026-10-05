@@ -13,7 +13,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
-    "firebase": "^12.18.0",
+    "firebase": "^12.19.0",
     "lucide-react": "^1.33.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.8",
@@ -32,5 +32,8 @@
     "typescript": "^7.0.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.5"
   }
 }

@@ -46,7 +46,7 @@ export const OSS_LICENSES: OssPackageLicense[] = [
   },
   {
     "name": "firebase",
-    "version": "12.18.0",
+    "version": "12.19.0",
     "description": "Firebase JavaScript library for web and Node.js",
     "license": "Apache-2.0",
     "copyright": "Copyright 2020 Google LLC",
