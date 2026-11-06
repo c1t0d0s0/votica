@@ -57,6 +57,7 @@ firestore-root
 | `locationUrl` | `string` | No | `undefined` | Map / venue URL (`http(s)://` only, validated on save and render). |
 | `fee` | `string` | No | `undefined` | Fee / budget (max 100 chars). |
 | `notes` | `string` | No | `undefined` | Notes (max 1000 chars). |
+| `capacity` | `number \| null` | No | `undefined` | Per-candidate attendee limit for schedule polls (number of ◯, 1–1000). Full candidates accept no new ◯ (existing ◯ are kept). Unlimited when unset. Note: Security Rules cannot aggregate votes, so the check runs on the client right before saving (all votes are fetched). Near-simultaneous submissions may slightly exceed the limit; the admin can then correct or delete responses. Admin edits are not restricted. |
 | `createdAt` | `Timestamp` / `string` | Yes | Server | ISO 8601 string or Firestore Server Timestamp. |
 | `updatedAt` | `Timestamp` / `string` | Yes | Server | Timestamp of last modification. |
 

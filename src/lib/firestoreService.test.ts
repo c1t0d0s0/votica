@@ -18,6 +18,7 @@ import {
   addScheduleOptions,
 } from './firestoreService';
 import { computeProof, InvalidEditKeyError } from './editKey';
+import { ScheduleCapacityError } from './scheduleUtils';
 import { PollOption, PollRound } from './types';
 
 describe('firestoreService - Poll Discovery and URL-based Access', () => {
@@ -371,5 +372,34 @@ describe('firestoreService - Poll Discovery and URL-based Access', () => {
     const round = rounds[pollId][1];
     expect(round.options.map((o: any) => o.text)).toEqual(['12/5 19:00〜', '12/10 19:00〜', '12/12 終日']);
     expect(round.maxChoices).toBe(3);
+  });
+
+  it('enforces participant capacity on schedule votes (mock mode)', async () => {
+    const pollId = await createPoll(
+      {
+        title: 'Cap', description: '', creatorUid: 'admin', creatorDisplayName: 'Admin',
+        status: 'active', isPublicResult: true, requireAuth: true, showVoterNames: true, pollType: 'schedule',
+        capacity: 2,
+      },
+      { ...sampleRound, maxChoices: 2 }
+    );
+    const vote = (userId: string, a: 'circle' | 'triangle' | 'cross', b: 'circle' | 'triangle' | 'cross' = 'cross') => ({
+      userId, userDisplayName: userId, selectedOptionIds: [], scheduleResponses: { opt_1: a, opt_2: b },
+    });
+    const cap = { capacity: 2 };
+    await castVote(pollId, 1, vote('u1', 'circle'), undefined, cap);
+    await castVote(pollId, 1, vote('u2', 'circle'), undefined, cap);
+
+    await expect(castVote(pollId, 1, vote('u3', 'circle'), undefined, cap)).rejects.toBeInstanceOf(ScheduleCapacityError);
+    await castVote(pollId, 1, vote('u3', 'triangle', 'circle'), undefined, cap); // other candidate OK
+    await castVote(pollId, 1, vote('u1', 'circle', 'circle'), undefined, cap); // keeps own ◯
+    await castVote(pollId, 1, vote('u4', 'circle'), undefined, { capacity: null }); // unlimited
+
+    // Admin edits are not restricted
+    await adminUpdateVote(pollId, 1, 'u3', {
+      userDisplayName: 'u3', selectedOptionIds: ['opt_1'], scheduleResponses: { opt_1: 'circle', opt_2: 'circle' }, comment: '',
+    });
+    const votes = JSON.parse(mockStore['votica_mock_votes'])[pollId][1];
+    expect(votes.u3.scheduleResponses.opt_1).toBe('circle');
   });
 });

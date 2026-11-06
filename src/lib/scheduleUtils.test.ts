@@ -15,10 +15,54 @@ import {
   mergeScheduleCandidates,
   classifyNewCandidateLines,
   ScheduleCandidateLimitError,
+  countCircles,
+  getLockedCircleOptionIds,
+  findCapacityViolations,
+  normalizeCapacity,
 } from './scheduleUtils';
 import { Poll, PollRound, Vote } from './types';
 
 describe('scheduleUtils', () => {
+  describe('participant capacity', () => {
+    const round = { options: [{ id: 'a', text: 'A' }, { id: 'b', text: 'B' }] };
+    const v = (userId: string, resp: Record<string, 'circle' | 'triangle' | 'cross'>) => ({
+      id: userId, userId, selectedOptionIds: [], scheduleResponses: resp, votedAt: '',
+    });
+    const votes = [v('u1', { a: 'circle', b: 'cross' }), v('u2', { a: 'circle', b: 'triangle' })];
+
+    it('counts circles, optionally excluding a voter, including legacy votes', () => {
+      const legacy = { id: 'u3', userId: 'u3', selectedOptionIds: ['b'], votedAt: '' };
+      expect(countCircles([...votes, legacy], round)).toEqual({ a: 2, b: 1 });
+      expect(countCircles(votes, round, 'u1')).toEqual({ a: 1, b: 0 });
+    });
+
+    it('locks options where others reached the capacity', () => {
+      expect([...getLockedCircleOptionIds(round, votes, 2, 'u3')]).toEqual(['a']);
+      // u1 already has ◯ on "a": not counted, so they can keep it
+      expect(getLockedCircleOptionIds(round, votes, 2, 'u1').size).toBe(0);
+      expect([...getLockedCircleOptionIds(round, votes, 1, 'u1')]).toEqual(['a']);
+      expect(getLockedCircleOptionIds(round, votes, null, 'u3').size).toBe(0);
+      expect(getLockedCircleOptionIds(round, votes, 3, 'u3').size).toBe(0);
+    });
+
+    it('finds violations only for ◯ on locked options', () => {
+      expect(findCapacityViolations(round, votes, 2, 'u3', { a: 'circle', b: 'circle' })).toEqual(['a']);
+      expect(findCapacityViolations(round, votes, 2, 'u3', { a: 'triangle', b: 'circle' })).toEqual([]);
+      expect(findCapacityViolations(round, votes, 2, 'u2', { a: 'circle' })).toEqual([]);
+    });
+
+    it('normalizes capacity values', () => {
+      expect(normalizeCapacity('10')).toBe(10);
+      expect(normalizeCapacity(1000)).toBe(1000);
+      expect(normalizeCapacity('')).toBeNull();
+      expect(normalizeCapacity('0')).toBeNull();
+      expect(normalizeCapacity('2.5')).toBeNull();
+      expect(normalizeCapacity('1001')).toBeNull();
+      expect(normalizeCapacity('abc')).toBeNull();
+      expect(normalizeCapacity(null)).toBeNull();
+    });
+  });
+
   describe('sortScheduleOptions', () => {
     const ref = new Date(2026, 10, 1); // 2026-11-01
     const texts = (opts: { text: string }[]) => opts.map(o => o.text);

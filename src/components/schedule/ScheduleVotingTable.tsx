@@ -8,6 +8,11 @@ interface ScheduleVotingTableProps {
   onChangeResponse: (optionId: string, choice: ScheduleChoice) => void;
   onSetAllResponses: (choice: ScheduleChoice) => void;
   disabled?: boolean;
+  /** Options where ◯ cannot be chosen because the capacity is reached */
+  lockedCircleOptionIds?: Set<string>;
+  capacity?: number | null;
+  /** Current ◯ count per option (all voters), shown as "◯ n/capacity" */
+  circleCounts?: Record<string, number>;
 }
 
 export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
@@ -16,6 +21,9 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
   onChangeResponse,
   onSetAllResponses,
   disabled = false,
+  lockedCircleOptionIds,
+  capacity,
+  circleCounts,
 }) => {
   const { t, language } = useTranslation();
 
@@ -33,7 +41,16 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
-              onClick={() => onSetAllResponses('circle')}
+              onClick={() => {
+                if (lockedCircleOptionIds && lockedCircleOptionIds.size > 0) {
+                  // Skip full candidates: they keep the current response
+                  options.forEach(opt => {
+                    if (!lockedCircleOptionIds.has(opt.id)) onChangeResponse(opt.id, 'circle');
+                  });
+                } else {
+                  onSetAllResponses('circle');
+                }
+              }}
               className="px-2.5 py-1 text-xs font-bold rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
             >
               <span>{t('schedule.allCircle')}</span>
@@ -60,6 +77,8 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
       <div className="space-y-2.5">
         {options.map(option => {
           const currentChoice = responses[option.id];
+          const isCircleLocked = Boolean(lockedCircleOptionIds?.has(option.id));
+          const circleCount = circleCounts?.[option.id];
 
           return (
             <div
@@ -82,6 +101,20 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
                   {option.description && (
                     <p className="text-xs text-slate-400 mt-0.5">{option.description}</p>
                   )}
+                  {capacity ? (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {circleCount !== undefined && (
+                        <span className="text-[11px] font-bold text-slate-500">
+                          {t('scheduleEx.capacityCount', { count: circleCount, capacity })}
+                        </span>
+                      )}
+                      {isCircleLocked && (
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-600 text-white">
+                          {t('scheduleEx.fullBadge')}
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -90,18 +123,20 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
                 {choices.map(c => {
                   const meta = SCHEDULE_SYMBOLS[c];
                   const isSelected = currentChoice === c;
+                  const isLocked = c === 'circle' && isCircleLocked && !isSelected;
 
                   return (
                     <button
                       key={c}
                       type="button"
-                      disabled={disabled}
+                      disabled={disabled || isLocked}
+                      title={isLocked ? t('scheduleEx.capacityLockedHint') : undefined}
                       onClick={() => onChangeResponse(option.id, c)}
                       className={`px-2 py-2 sm:px-3 sm:py-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer select-none ${
                         isSelected
                           ? `${meta.bgClass} ${meta.borderClass} ${meta.textClass} border-2 shadow-xs scale-102`
                           : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100/80 hover:text-slate-800'
-                      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      } ${disabled || isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       <div className="text-base sm:text-lg font-bold leading-none">
                         {getScheduleSymbol(c, language)}

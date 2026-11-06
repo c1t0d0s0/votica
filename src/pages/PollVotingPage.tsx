@@ -40,7 +40,14 @@ import {
   InvalidEditKeyError,
 } from '../lib/editKey';
 import { calculateRoundResults } from '../lib/runoffUtils';
-import { calculateScheduleResults, getSortedRoundOptions, ScheduleCandidateLimitError } from '../lib/scheduleUtils';
+import {
+  calculateScheduleResults,
+  getSortedRoundOptions,
+  ScheduleCandidateLimitError,
+  ScheduleCapacityError,
+  countCircles,
+  getLockedCircleOptionIds,
+} from '../lib/scheduleUtils';
 import { getTheme } from '../lib/themes';
 import { VoteOptionCard } from '../components/poll/VoteOptionCard';
 import { ScheduleVotingTable } from '../components/schedule/ScheduleVotingTable';
@@ -215,6 +222,25 @@ export const PollVotingPage: React.FC = () => {
     [currentRoundData]
   );
 
+  // Participant capacity per candidate (schedule mode)
+  const scheduleCapacity = poll?.pollType === 'schedule' ? poll?.capacity || null : null;
+  const circleCounts = useMemo(
+    () => (currentRoundData && scheduleCapacity ? countCircles(roundVotes, currentRoundData) : undefined),
+    [currentRoundData, roundVotes, scheduleCapacity]
+  );
+  const lockedForMe = useMemo(
+    () =>
+      currentRoundData
+        ? getLockedCircleOptionIds(
+            currentRoundData,
+            roundVotes,
+            scheduleCapacity,
+            currentUser?.uid || (poll?.requireAuth === false ? anonUid : undefined)
+          )
+        : new Set<string>(),
+    [currentRoundData, roundVotes, scheduleCapacity, currentUser?.uid, poll?.requireAuth, anonUid]
+  );
+
   // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed (for standard poll)
   useEffect(() => {
     if (!poll || !currentRoundData || !summary || poll.pollType === 'schedule') return;
@@ -337,6 +363,13 @@ export const PollVotingPage: React.FC = () => {
       showToast('error', t('scheduleEx.toastLegacyVote'));
       return true;
     }
+    if (err instanceof ScheduleCapacityError) {
+      const names = err.optionIds
+        .map(id => currentRoundData.options.find(o => o.id === id)?.text || id)
+        .join(language === 'ja' ? '」「' : '", "');
+      showToast('error', t('scheduleEx.toastCapacityFull', { names }));
+      return true;
+    }
     return false;
   };
 
@@ -442,7 +475,9 @@ export const PollVotingPage: React.FC = () => {
         };
         if (vote.userPhotoURL) payload.userPhotoURL = vote.userPhotoURL;
         if (vote.isAnonymous) payload.isAnonymous = true;
-        await castVote(poll.id, viewRoundNumber, payload, vote.isAnonymous && proof ? { proof } : undefined);
+        await castVote(poll.id, viewRoundNumber, payload, vote.isAnonymous && proof ? { proof } : undefined, {
+          capacity: scheduleCapacity,
+        });
       }
       if (vote.userId === effectiveUserId) {
         setScheduleResponses(values.scheduleResponses);
@@ -519,6 +554,12 @@ export const PollVotingPage: React.FC = () => {
       }
     }
   };
+
+  // Capacity locks for the response being edited (admins are not restricted)
+  const editTargetLocked =
+    editTarget && editTarget.mode !== 'admin'
+      ? getLockedCircleOptionIds(currentRoundData, roundVotes, scheduleCapacity, editTarget.vote.userId)
+      : undefined;
 
   // Number of candidates the current voter has not answered yet (e.g. added after responding)
   const unansweredOptionCount =
@@ -638,7 +679,7 @@ export const PollVotingPage: React.FC = () => {
           editAuth = await buildOwnAnonEditAuth();
         }
 
-        await castVote(poll.id, viewRoundNumber, votePayload, editAuth);
+        await castVote(poll.id, viewRoundNumber, votePayload, editAuth, { capacity: scheduleCapacity });
         if (editAuth) {
           rememberProof(poll.id, viewRoundNumber, voterUid, editAuth.newProof || editAuth.proof);
           setEditPassword('');
@@ -1024,6 +1065,9 @@ export const PollVotingPage: React.FC = () => {
             onChangeResponse={handleScheduleResponseChange}
             onSetAllResponses={handleScheduleSetAll}
             disabled={!isVotingOpen}
+            lockedCircleOptionIds={lockedForMe}
+            capacity={scheduleCapacity}
+            circleCounts={circleCounts}
           />
           </>
         ) : (
@@ -1226,6 +1270,9 @@ export const PollVotingPage: React.FC = () => {
             mode={editTarget?.mode || 'owner'}
             onSave={handleEditSave}
             onDelete={handleEditDelete}
+            lockedCircleOptionIds={editTargetLocked}
+            capacity={scheduleCapacity}
+            circleCounts={circleCounts}
           />
           <EditPasswordPromptModal
             isOpen={Boolean(passwordTarget)}

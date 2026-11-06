@@ -5,7 +5,7 @@ import { buildGoogleCalendarUrl, buildIcs, downloadIcs } from '../../lib/calenda
 import { useTranslation } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../common/Button';
-import { MapPin, ExternalLink, Wallet, StickyNote, CalendarCheck, CalendarPlus, Download, Pencil, XCircle } from 'lucide-react';
+import { MapPin, ExternalLink, Wallet, StickyNote, Users, CalendarCheck, CalendarPlus, Download, Pencil, XCircle } from 'lucide-react';
 
 /** Current page URL used as a link back to the poll (works with HashRouter). */
 function currentPageUrl(): string {
@@ -21,7 +21,7 @@ interface EventMetaListProps {
 export const EventMetaList: React.FC<EventMetaListProps> = ({ poll }) => {
   const { t } = useTranslation();
   const mapUrl = sanitizeHttpUrl(poll.locationUrl);
-  if (!poll.location && !mapUrl && !poll.fee && !poll.notes) return null;
+  if (!poll.location && !mapUrl && !poll.fee && !poll.notes && !poll.capacity) return null;
 
   const rowCls = 'flex items-start gap-2 text-xs sm:text-sm text-slate-700';
   const labelCls = 'font-bold text-slate-500 shrink-0 min-w-[3.5rem]';
@@ -55,6 +55,13 @@ export const EventMetaList: React.FC<EventMetaListProps> = ({ poll }) => {
           <span className="min-w-0 break-words">{poll.fee}</span>
         </div>
       )}
+      {poll.capacity ? (
+        <div className={rowCls}>
+          <Users className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+          <span className={labelCls}>{t('scheduleEx.metaCapacity')}</span>
+          <span className="min-w-0 break-words">{t('scheduleEx.metaCapacityValue', { count: poll.capacity })}</span>
+        </div>
+      ) : null}
       {poll.notes && (
         <div className={rowCls}>
           <StickyNote className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />

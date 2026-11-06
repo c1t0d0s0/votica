@@ -31,6 +31,7 @@ export interface PollEventInfo {
   locationUrl?: string;
   fee?: string;
   notes?: string;
+  capacity?: number | null; // Max ◯ (attendees) per candidate. null/undefined = unlimited
 }
 
 export interface PollRound {
@@ -72,6 +73,7 @@ export interface Poll {
   locationUrl?: string;
   fee?: string;
   notes?: string;
+  capacity?: number | null; // Max ◯ (attendees) per candidate. null/undefined = unlimited
 }
 
 export interface Vote {

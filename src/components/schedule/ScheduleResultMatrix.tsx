@@ -33,6 +33,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
 }) => {
   const { t, language } = useTranslation();
   const decidedOptionId = poll.decision?.optionId;
+  const capacity = poll.capacity || null;
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
 
@@ -208,6 +209,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
             <tbody className="divide-y divide-slate-100">
               {summary.options.map(optSummary => {
                 const isDecided = optSummary.option.id === decidedOptionId;
+                const isFull = Boolean(capacity && optSummary.circleCount >= capacity);
                 return (
                   <tr
                     key={optSummary.option.id}
@@ -230,6 +232,11 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                           <Crown className="w-4 h-4 text-amber-500 fill-amber-400 shrink-0" />
                         )}
                         <span className="leading-snug">{optSummary.option.text}</span>
+                        {isFull && (
+                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-600 text-white">
+                            {t('scheduleEx.fullBadge')}
+                          </span>
+                        )}
                         {isDecided && (
                           <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
                             <CalendarCheck className="w-3 h-3" />
@@ -257,6 +264,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                       <div className="inline-flex items-center gap-1.5 text-[11px] font-bold">
                         <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                           {getScheduleSymbol('circle', language)} {optSummary.circleCount}
+                          {capacity ? `/${capacity}` : ''}
                         </span>
                         <span className="text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
                           {getScheduleSymbol('triangle', language)} {optSummary.triangleCount}

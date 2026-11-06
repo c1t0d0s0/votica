@@ -18,7 +18,13 @@ import {
 import { db, isFirebaseConfigured } from './firebase';
 import { Poll, PollEventInfo, PollRound, ScheduleDecision, Vote } from './types';
 import { computeSecretHash, InvalidEditKeyError } from './editKey';
-import { sanitizeHttpUrl, mergeScheduleCandidates } from './scheduleUtils';
+import {
+  sanitizeHttpUrl,
+  mergeScheduleCandidates,
+  normalizeCapacity,
+  findCapacityViolations,
+  ScheduleCapacityError,
+} from './scheduleUtils';
 
 // Mock storage keys for offline/demo mode
 const MOCK_POLLS_KEY = 'votica_mock_polls';
@@ -414,8 +420,10 @@ export async function castVote(
   pollId: string,
   roundNumber: number,
   vote: Omit<Vote, 'id' | 'votedAt'>,
-  editAuth?: VoteEditAuth
+  editAuth?: VoteEditAuth,
+  options: { capacity?: number | null } = {}
 ): Promise<void> {
+  const capacity = normalizeCapacity(options.capacity);
   const nowMs = Date.now();
   const nowIso = new Date().toISOString();
   const voteDocData: Vote = {
@@ -431,6 +439,13 @@ export async function castVote(
   if (!isFirebaseConfigured || !db) {
     const rounds = getMockRounds();
     assertRoundOpen(rounds[pollId]?.[roundNumber], nowMs);
+
+    const mockRound = rounds[pollId]?.[roundNumber];
+    if (capacity && mockRound && vote.scheduleResponses) {
+      const others = Object.values(getMockVotes()[pollId]?.[roundNumber] || {});
+      const violations = findCapacityViolations(mockRound, others, capacity, vote.userId, vote.scheduleResponses);
+      if (violations.length > 0) throw new ScheduleCapacityError(violations);
+    }
 
     const allVotes = getMockVotes();
     if (!allVotes[pollId]) allVotes[pollId] = {};
@@ -461,6 +476,21 @@ export async function castVote(
   const roundSnap = await getDoc(roundDocRef);
   if (roundSnap.exists()) {
     assertRoundOpen(roundSnap.data(), nowMs);
+
+    // Participant capacity (client-side check: rules cannot aggregate votes)
+    if (capacity && vote.scheduleResponses) {
+      const votesSnap = await getDocs(collection(db, 'polls', pollId, 'rounds', roundId, 'votes'));
+      const allVotes = votesSnap.docs.map(d => ({ ...(d.data() as Vote), id: d.id }));
+      const roundData = roundSnap.data() as PollRound;
+      const violations = findCapacityViolations(
+        { options: roundData.options || [] },
+        allVotes,
+        capacity,
+        vote.userId,
+        vote.scheduleResponses
+      );
+      if (violations.length > 0) throw new ScheduleCapacityError(violations);
+    }
   }
 
   const voteDocRef = doc(db, 'polls', pollId, 'rounds', roundId, 'votes', vote.userId);
@@ -926,6 +956,7 @@ export function normalizeEventInfo(info: PollEventInfo): Required<PollEventInfo>
     locationUrl: sanitizeHttpUrl(info.locationUrl).slice(0, 1000),
     fee: (info.fee || '').trim().slice(0, 100),
     notes: (info.notes || '').trim().slice(0, 1000),
+    capacity: normalizeCapacity(info.capacity),
   };
 }
 

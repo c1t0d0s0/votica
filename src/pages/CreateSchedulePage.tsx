@@ -10,6 +10,7 @@ import {
   candidateLinesToOptions,
   sanitizeHttpUrl,
   sortScheduleOptions,
+  normalizeCapacity,
 } from '../lib/scheduleUtils';
 import { ScheduleQuickDatePicker } from '../components/schedule/ScheduleQuickDatePicker';
 import { ThemeSelector } from '../components/theme/ThemeSelector';
@@ -41,6 +42,8 @@ export const CreateSchedulePage: React.FC = () => {
   const [locationUrl, setLocationUrl] = useState('');
   const [fee, setFee] = useState('');
   const [notes, setNotes] = useState('');
+  const [capacityText, setCapacityText] = useState('');
+  const isCapacityInvalid = capacityText.trim() !== '' && normalizeCapacity(capacityText) === null;
   const isLocationUrlInvalid = locationUrl.trim() !== '' && !sanitizeHttpUrl(locationUrl);
 
   // Default candidate dates text
@@ -121,6 +124,11 @@ export const CreateSchedulePage: React.FC = () => {
       return;
     }
 
+    if (isCapacityInvalid) {
+      showToast('error', t('scheduleEx.capacityInvalid'));
+      return;
+    }
+
     if (isLocationUrlInvalid) {
       showToast('error', t('scheduleEx.invalidUrl'));
       return;
@@ -143,7 +151,7 @@ export const CreateSchedulePage: React.FC = () => {
 
       const refDate = new Date(startDate);
       const options = sortScheduleOptions(candidateLinesToOptions(parsedLines, refDate), refDate);
-      const eventInfo = normalizeEventInfo({ location, locationUrl, fee, notes });
+      const eventInfo = normalizeEventInfo({ location, locationUrl, fee, notes, capacity: normalizeCapacity(capacityText) });
 
       const pollData: Omit<Poll, 'id' | 'createdAt' | 'updatedAt' | 'currentRound' | 'totalRounds'> = {
         title: title.trim(),
@@ -162,6 +170,7 @@ export const CreateSchedulePage: React.FC = () => {
         locationUrl: eventInfo.locationUrl || undefined,
         fee: eventInfo.fee || undefined,
         notes: eventInfo.notes || undefined,
+        capacity: eventInfo.capacity ?? undefined,
       };
 
       const initialRound: Omit<PollRound, 'roundNumber'> = {
@@ -425,6 +434,33 @@ export const CreateSchedulePage: React.FC = () => {
                 className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm"
               />
             </div>
+          </div>
+
+          {/* Participant capacity per candidate */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">
+              {t('scheduleEx.capacityLabel')}
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={1000}
+                step={1}
+                value={capacityText}
+                onChange={e => setCapacityText(e.target.value)}
+                placeholder={t('scheduleEx.capacityPlaceholder')}
+                aria-invalid={isCapacityInvalid}
+                className={`w-32 text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm ${
+                  isCapacityInvalid ? 'border-rose-400' : 'border-slate-300'
+                }`}
+              />
+              <span className="text-xs text-slate-600">{t('scheduleEx.capacityUnit')}</span>
+            </div>
+            <p className={`text-[11px] mt-1 ${isCapacityInvalid ? 'text-rose-600' : 'text-slate-400'}`}>
+              {isCapacityInvalid ? t('scheduleEx.capacityInvalid') : t('scheduleEx.capacityHint')}
+            </p>
           </div>
 
           {/* Advanced options toggle */}

@@ -21,6 +21,9 @@ interface ScheduleResponseEditModalProps {
   mode: 'admin' | 'owner';
   onSave: (values: ScheduleResponseEditValues) => Promise<void>;
   onDelete: () => Promise<void>;
+  lockedCircleOptionIds?: Set<string>;
+  capacity?: number | null;
+  circleCounts?: Record<string, number>;
 }
 
 /**
@@ -35,6 +38,9 @@ export const ScheduleResponseEditModal: React.FC<ScheduleResponseEditModalProps>
   mode,
   onSave,
   onDelete,
+  lockedCircleOptionIds,
+  capacity,
+  circleCounts,
 }) => {
   const { t } = useTranslation();
   const [name, setName] = useState('');
@@ -162,6 +168,9 @@ export const ScheduleResponseEditModal: React.FC<ScheduleResponseEditModalProps>
               responses={responses}
               onChangeResponse={(optionId, choice) => setResponses(prev => ({ ...prev, [optionId]: choice }))}
               onSetAllResponses={setAll}
+              lockedCircleOptionIds={lockedCircleOptionIds}
+              capacity={capacity}
+              circleCounts={circleCounts}
             />
           </div>
 

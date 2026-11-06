@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Poll, PollEventInfo } from '../../lib/types';
-import { sanitizeHttpUrl } from '../../lib/scheduleUtils';
+import { sanitizeHttpUrl, normalizeCapacity } from '../../lib/scheduleUtils';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
@@ -18,6 +18,7 @@ export const EditEventInfoModal: React.FC<EditEventInfoModalProps> = ({ isOpen, 
   const [locationUrl, setLocationUrl] = useState('');
   const [fee, setFee] = useState('');
   const [notes, setNotes] = useState('');
+  const [capacityText, setCapacityText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -26,16 +27,18 @@ export const EditEventInfoModal: React.FC<EditEventInfoModalProps> = ({ isOpen, 
     setLocationUrl(poll.locationUrl || '');
     setFee(poll.fee || '');
     setNotes(poll.notes || '');
+    setCapacityText(poll.capacity ? String(poll.capacity) : '');
   }, [isOpen, poll]);
 
   const isUrlInvalid = locationUrl.trim() !== '' && !sanitizeHttpUrl(locationUrl);
+  const isCapacityInvalid = capacityText.trim() !== '' && normalizeCapacity(capacityText) === null;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isUrlInvalid) return;
+    if (isUrlInvalid || isCapacityInvalid) return;
     try {
       setIsSaving(true);
-      await onSave({ location, locationUrl, fee, notes });
+      await onSave({ location, locationUrl, fee, notes, capacity: normalizeCapacity(capacityText) });
     } finally {
       setIsSaving(false);
     }
@@ -100,11 +103,32 @@ export const EditEventInfoModal: React.FC<EditEventInfoModalProps> = ({ isOpen, 
             className={inputCls}
           />
         </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1.5">{t('scheduleEx.capacityLabel')}</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={1000}
+              step={1}
+              value={capacityText}
+              onChange={e => setCapacityText(e.target.value)}
+              placeholder={t('scheduleEx.capacityPlaceholder')}
+              aria-invalid={isCapacityInvalid}
+              className={`${inputCls} w-32 ${isCapacityInvalid ? 'border-rose-400 focus:ring-rose-400' : ''}`}
+            />
+            <span className="text-xs text-slate-600">{t('scheduleEx.capacityUnit')}</span>
+          </div>
+          <p className={`text-[11px] mt-1 ${isCapacityInvalid ? 'text-rose-600' : 'text-slate-400'}`}>
+            {isCapacityInvalid ? t('scheduleEx.capacityInvalid') : t('scheduleEx.capacityHint')}
+          </p>
+        </div>
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
             {t('scheduleEx.cancelBtn')}
           </Button>
-          <Button type="submit" variant="primary" isLoading={isSaving} disabled={isUrlInvalid}>
+          <Button type="submit" variant="primary" isLoading={isSaving} disabled={isUrlInvalid || isCapacityInvalid}>
             {t('scheduleEx.saveBtn')}
           </Button>
         </div>

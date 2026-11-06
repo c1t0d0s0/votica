@@ -57,6 +57,7 @@ firestore-root
 | `locationUrl` | `string` | - | `undefined` | 地図・お店のURL（`http(s)://` のみ。保存時と表示時に検証）。 |
 | `fee` | `string` | - | `undefined` | 会費・予算（最大100文字）。 |
 | `notes` | `string` | - | `undefined` | 備考（最大1000文字）。 |
+| `capacity` | `number \| null` | - | `undefined` | 日程調整の各候補の参加上限（◯の人数、1〜1000）。上限に達した候補には新しく◯を付けられない（既存の◯は維持）。未設定なら無制限。※Security Rules では票を集計できないため、上限の確認は保存直前にクライアント側で全票を取得して行う。ほぼ同時に送信された場合はわずかに超える可能性があり、その場合は管理者が修正・削除で調整する。管理者による修正は上限の対象外。 |
 | `createdAt` | `Timestamp` / `string` | ◯ | サーバー時刻 | 作成日時（ISO 8601 または Server Timestamp）。 |
 | `updatedAt` | `Timestamp` / `string` | ◯ | サーバー時刻 | 最終更新日時。 |
 

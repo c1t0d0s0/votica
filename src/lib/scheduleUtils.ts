@@ -261,6 +261,88 @@ export function mergeScheduleCandidates(
   };
 }
 
+/**
+ * Normalizes a capacity value: integer 1..1000, otherwise null (unlimited).
+ */
+export function normalizeCapacity(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(String(value).trim());
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 1 || n > 1000) return null;
+  return n;
+}
+
+/** Effective responses of a vote (falls back to selectedOptionIds for legacy votes). */
+function getVoteResponses(vote: Vote, round: Pick<PollRound, 'options'>): Record<string, ScheduleChoice> {
+  if (vote.scheduleResponses) return vote.scheduleResponses;
+  const responses: Record<string, ScheduleChoice> = {};
+  if (vote.selectedOptionIds && vote.selectedOptionIds.length > 0) {
+    round.options.forEach(opt => {
+      responses[opt.id] = vote.selectedOptionIds.includes(opt.id) ? 'circle' : 'cross';
+    });
+  }
+  return responses;
+}
+
+/** Counts ◯ per option, optionally excluding one voter. */
+export function countCircles(
+  votes: Vote[],
+  round: Pick<PollRound, 'options'>,
+  excludeUserId?: string
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  round.options.forEach(opt => {
+    counts[opt.id] = 0;
+  });
+  votes.forEach(v => {
+    if (excludeUserId && v.userId === excludeUserId) return;
+    const responses = getVoteResponses(v, round);
+    for (const [optionId, choice] of Object.entries(responses)) {
+      if (choice === 'circle' && optionId in counts) counts[optionId]++;
+    }
+  });
+  return counts;
+}
+
+/**
+ * Option IDs where ◯ can no longer be chosen by `userId` because the others' ◯ count
+ * already reached the capacity. The user's own existing ◯ is not counted, so they can keep it.
+ */
+export function getLockedCircleOptionIds(
+  round: Pick<PollRound, 'options'>,
+  votes: Vote[],
+  capacity: number | null | undefined,
+  userId?: string
+): Set<string> {
+  const locked = new Set<string>();
+  if (!capacity) return locked;
+  const counts = countCircles(votes, round, userId);
+  for (const [optionId, count] of Object.entries(counts)) {
+    if (count >= capacity) locked.add(optionId);
+  }
+  return locked;
+}
+
+/** Option IDs answered ◯ in `responses` that are locked (full) for `userId`. */
+export function findCapacityViolations(
+  round: Pick<PollRound, 'options'>,
+  votes: Vote[],
+  capacity: number | null | undefined,
+  userId: string,
+  responses: Record<string, ScheduleChoice>
+): string[] {
+  const locked = getLockedCircleOptionIds(round, votes, capacity, userId);
+  return round.options
+    .filter(opt => responses[opt.id] === 'circle' && locked.has(opt.id))
+    .map(opt => opt.id);
+}
+
+export class ScheduleCapacityError extends Error {
+  constructor(public readonly optionIds: string[]) {
+    super('CAPACITY_FULL');
+    this.name = 'ScheduleCapacityError';
+  }
+}
+
 /** Round options sorted oldest first (using the round's reference date). */
 export function getSortedRoundOptions(round: PollRound): PollOption[] {
   return sortScheduleOptions(round.options, getRoundRefDate(round));
@@ -512,10 +594,15 @@ export function formatScheduleExportText(
   }
 
   lines.push(isEn ? '[Attendance by Date]' : '【日程別 出欠状況】');
+  const capacity = normalizeCapacity(poll.capacity);
+  if (capacity) {
+    lines.push(isEn ? `(Capacity: ${capacity} per date)` : `（参加上限: 各日程 ${capacity}名）`);
+  }
   summary.options.forEach(optSummary => {
     const bestMark = optSummary.isBest ? '👑 ' : '';
+    const fullMark = capacity && optSummary.circleCount >= capacity ? (isEn ? ' (Full)' : ' (満員)') : '';
     lines.push(
-      `${bestMark}${optSummary.option.text} → ${symCircle}:${optSummary.circleCount} ${symTriangle}:${optSummary.triangleCount} ${symCross}:${optSummary.crossCount} (${isEn ? 'Total ' : '計'}${optSummary.score}pt)`
+      `${bestMark}${optSummary.option.text} → ${symCircle}:${optSummary.circleCount}${capacity ? `/${capacity}` : ''} ${symTriangle}:${optSummary.triangleCount} ${symCross}:${optSummary.crossCount} (${isEn ? 'Total ' : '計'}${optSummary.score}pt)${fullMark}`
     );
   });
 
