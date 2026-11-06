@@ -10,10 +10,114 @@ import {
   sanitizeHttpUrl,
   formatDateInfo,
   buildDecisionFromOption,
+  sortScheduleOptions,
+  getSortedRoundOptions,
+  mergeScheduleCandidates,
+  classifyNewCandidateLines,
+  ScheduleCandidateLimitError,
 } from './scheduleUtils';
 import { Poll, PollRound, Vote } from './types';
 
 describe('scheduleUtils', () => {
+  describe('sortScheduleOptions', () => {
+    const ref = new Date(2026, 10, 1); // 2026-11-01
+    const texts = (opts: { text: string }[]) => opts.map(o => o.text);
+
+    it('sorts oldest first across months and year rollover', () => {
+      const opts = ['1/5(火) 19:00〜', '12/24(木) 19:00〜', '11/30(月) 19:00〜'].map((text, i) => ({ id: `o${i}`, text }));
+      expect(texts(sortScheduleOptions(opts, ref))).toEqual(['11/30(月) 19:00〜', '12/24(木) 19:00〜', '1/5(火) 19:00〜']);
+    });
+
+    it('puts all-day before timed on the same day, then by start time', () => {
+      const opts = ['11/20 20:00〜', '11/20 9:30〜', '11/20 終日', '11/20 18:30〜'].map((text, i) => ({ id: `o${i}`, text }));
+      expect(texts(sortScheduleOptions(opts, ref))).toEqual(['11/20 終日', '11/20 9:30〜', '11/20 18:30〜', '11/20 20:00〜']);
+    });
+
+    it('keeps unparseable options last in original order (stable)', () => {
+      const opts = ['未定A', '11/21 19:00〜', '未定B', '11/21 19:00〜(2)', '11/10 19:00〜'].map((text, i) => ({ id: `o${i}`, text }));
+      expect(texts(sortScheduleOptions(opts, ref))).toEqual(['11/10 19:00〜', '11/21 19:00〜', '11/21 19:00〜(2)', '未定A', '未定B']);
+    });
+
+    it('prefers stored dateInfo over text parsing', () => {
+      const opts = [
+        { id: 'a', text: 'Aの日', dateInfo: { date: '2026-12-01', allDay: true } },
+        { id: 'b', text: 'Bの日', dateInfo: { date: '2026-11-15', startTime: '19:00' } },
+      ];
+      expect(sortScheduleOptions(opts, ref).map(o => o.id)).toEqual(['b', 'a']);
+    });
+
+    it('uses the round creation date as reference', () => {
+      const round = {
+        roundNumber: 1, title: '', maxChoices: 2, status: 'open' as const,
+        startDate: '2026-12-20T00:00:00.000Z', endDate: '2027-01-30T00:00:00.000Z', createdAt: '2026-12-20T00:00:00.000Z',
+        options: [{ id: 'jan', text: '1/10 19:00〜' }, { id: 'dec', text: '12/28 19:00〜' }],
+      };
+      expect(getSortedRoundOptions(round).map(o => o.id)).toEqual(['dec', 'jan']);
+    });
+  });
+
+  describe('sorted results & exports', () => {
+    const round = {
+      roundNumber: 1, title: '', maxChoices: 3, status: 'open' as const,
+      startDate: '2026-11-01T00:00:00.000Z', endDate: '2026-11-30T00:00:00.000Z', createdAt: '2026-11-01T00:00:00.000Z',
+      options: [
+        { id: 'c', text: '11/25 19:00〜' },
+        { id: 'a', text: '11/5 19:00〜' },
+        { id: 'b', text: '11/12 19:00〜' },
+      ],
+    };
+    const votes = [
+      { id: 'u1', userId: 'u1', userDisplayName: 'Taro', selectedOptionIds: ['a'], scheduleResponses: { a: 'circle' as const, b: 'cross' as const, c: 'triangle' as const }, votedAt: '2026-11-02T00:00:00.000Z' },
+    ];
+
+    it('orders summary options oldest first', () => {
+      expect(calculateScheduleResults(round, votes).options.map(o => o.option.id)).toEqual(['a', 'b', 'c']);
+    });
+
+    it('orders CSV columns oldest first', () => {
+      const csv = formatScheduleCsv(round, calculateScheduleResults(round, votes), 'ja');
+      expect(csv.split('\n')[0]).toBe('"回答者","11/5 19:00〜","11/12 19:00〜","11/25 19:00〜","コメント","回答日時"');
+      expect(csv.split('\n')[1].startsWith('"Taro",◯,✗,△')).toBe(true);
+    });
+  });
+
+  describe('mergeScheduleCandidates', () => {
+    const ref = new Date(2026, 10, 1);
+    const existing = [
+      { id: 'opt_sched_1_aaaaa', text: '11/20 19:00〜' },
+      { id: 'opt_sched_2_bbbbb', text: '11/22 19:00〜' },
+    ];
+
+    it('adds new candidates sorted, skipping duplicates', () => {
+      const r = mergeScheduleCandidates(existing, ['11/21 19:00〜', ' 11/20  19:00〜 ', '11/21 19:00〜', '11/19 終日'], ref);
+      expect(r.added.map(o => o.text)).toEqual(['11/21 19:00〜', '11/19 終日']);
+      expect(r.skipped).toHaveLength(2);
+      expect(r.options.map(o => o.text)).toEqual(['11/19 終日', '11/20 19:00〜', '11/21 19:00〜', '11/22 19:00〜']);
+      expect(r.added[0].dateInfo?.date).toBe('2026-11-21');
+      const ids = r.options.map(o => o.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('enforces the 30 candidate limit', () => {
+      const many = Array.from({ length: 29 }, (_, i) => ({ id: `x${i}`, text: `候補${i}` }));
+      expect(mergeScheduleCandidates(many, ['A'], ref).options).toHaveLength(30);
+      try {
+        mergeScheduleCandidates(many, ['A', 'B'], ref);
+        throw new Error('should throw');
+      } catch (e) {
+        expect(e).toBeInstanceOf(ScheduleCandidateLimitError);
+        expect((e as ScheduleCandidateLimitError).remaining).toBe(1);
+      }
+    });
+
+    it('classifies duplicates within input and against existing', () => {
+      expect(classifyNewCandidateLines(existing, ['11/20 19:00〜', 'X', 'X', ''])).toEqual({
+        newLines: ['X'],
+        duplicateLines: ['11/20 19:00〜', 'X'],
+      });
+    });
+  });
+
   describe('parseCandidateDateInfo', () => {
     const ref = new Date(2026, 7, 1); // 2026-08-01
 

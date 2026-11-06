@@ -9,6 +9,7 @@ import {
   parseScheduleCandidateLines,
   candidateLinesToOptions,
   sanitizeHttpUrl,
+  sortScheduleOptions,
 } from '../lib/scheduleUtils';
 import { ScheduleQuickDatePicker } from '../components/schedule/ScheduleQuickDatePicker';
 import { ThemeSelector } from '../components/theme/ThemeSelector';
@@ -140,7 +141,8 @@ export const CreateSchedulePage: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      const options = candidateLinesToOptions(parsedLines, new Date(startDate));
+      const refDate = new Date(startDate);
+      const options = sortScheduleOptions(candidateLinesToOptions(parsedLines, refDate), refDate);
       const eventInfo = normalizeEventInfo({ location, locationUrl, fee, notes });
 
       const pollData: Omit<Poll, 'id' | 'createdAt' | 'updatedAt' | 'currentRound' | 'totalRounds'> = {

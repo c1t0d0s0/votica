@@ -58,8 +58,13 @@ export function parseScheduleCandidateLines(rawText: string): string[] {
  * Converts parsed date strings into PollOption array.
  * Each option gets a best-effort structured `dateInfo` (used for calendar export).
  */
-export function candidateLinesToOptions(lines: string[], refDate: Date = new Date()): PollOption[] {
-  return lines.map((line, idx) => {
+export function candidateLinesToOptions(
+  lines: string[],
+  refDate: Date = new Date(),
+  startIndex = 0
+): PollOption[] {
+  return lines.map((line, i) => {
+    const idx = startIndex + i;
     const option: PollOption = {
       id: `opt_sched_${idx + 1}_${Math.random().toString(36).substring(2, 7)}`,
       text: line,
@@ -152,6 +157,116 @@ export function parseCandidateDateInfo(text: string, refDate: Date = new Date())
 }
 
 /**
+ * Reference date used to interpret year-less candidate text of a round
+ * (same basis as at creation time).
+ */
+export function getRoundRefDate(round: Pick<PollRound, 'createdAt' | 'startDate'>): Date {
+  const d = new Date(round.createdAt || round.startDate || Date.now());
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+/**
+ * Sort key for a schedule option: "YYYY-MM-DD|0" for all-day, "YYYY-MM-DD|1HH:mm" for timed.
+ * Returns null when the date cannot be determined.
+ */
+function scheduleOptionSortKey(option: PollOption, refDate: Date): string | null {
+  const info = option.dateInfo || parseCandidateDateInfo(option.text, refDate);
+  if (!info) return null;
+  if (info.allDay || !info.startTime) return `${info.date}|0`;
+  return `${info.date}|1${info.startTime}`;
+}
+
+/**
+ * Returns a new array of schedule options sorted oldest first.
+ * Same day: all-day first, then by start time. Options whose date cannot be parsed
+ * go last. The sort is stable (ties keep the original order).
+ */
+export function sortScheduleOptions(options: PollOption[], refDate: Date = new Date()): PollOption[] {
+  return options
+    .map((option, index) => ({ option, index, key: scheduleOptionSortKey(option, refDate) }))
+    .sort((a, b) => {
+      if (a.key === null && b.key === null) return a.index - b.index;
+      if (a.key === null) return 1;
+      if (b.key === null) return -1;
+      if (a.key !== b.key) return a.key < b.key ? -1 : 1;
+      return a.index - b.index;
+    })
+    .map(item => item.option);
+}
+
+/** Maximum number of candidate dates per schedule poll. */
+export const MAX_SCHEDULE_CANDIDATES = 30;
+
+const normalizeCandidateText = (text: string) => text.trim().replace(/\s+/g, ' ');
+
+/**
+ * Classifies new candidate lines against existing options:
+ * - `newLines`: lines to add (deduplicated, in input order)
+ * - `duplicateLines`: lines that already exist (or repeat within the input)
+ */
+export function classifyNewCandidateLines(
+  existing: PollOption[],
+  lines: string[]
+): { newLines: string[]; duplicateLines: string[] } {
+  const seen = new Set(existing.map(o => normalizeCandidateText(o.text)));
+  const newLines: string[] = [];
+  const duplicateLines: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const key = normalizeCandidateText(line);
+    if (seen.has(key)) {
+      duplicateLines.push(line);
+    } else {
+      seen.add(key);
+      newLines.push(line);
+    }
+  }
+  return { newLines, duplicateLines };
+}
+
+export class ScheduleCandidateLimitError extends Error {
+  constructor(public readonly remaining: number) {
+    super(`候補日程は最大${MAX_SCHEDULE_CANDIDATES}件までです`);
+    this.name = 'ScheduleCandidateLimitError';
+  }
+}
+
+/**
+ * Appends new candidate lines to existing options and returns the merged list sorted oldest first.
+ * Duplicates are skipped. Throws ScheduleCandidateLimitError when the total would exceed the limit.
+ */
+export function mergeScheduleCandidates(
+  existing: PollOption[],
+  lines: string[],
+  refDate: Date = new Date()
+): { options: PollOption[]; added: PollOption[]; skipped: string[] } {
+  const { newLines, duplicateLines } = classifyNewCandidateLines(existing, lines);
+  if (existing.length + newLines.length > MAX_SCHEDULE_CANDIDATES) {
+    throw new ScheduleCandidateLimitError(Math.max(0, MAX_SCHEDULE_CANDIDATES - existing.length));
+  }
+  const usedIds = new Set(existing.map(o => o.id));
+  const added = candidateLinesToOptions(newLines, refDate, existing.length).map(opt => {
+    let id = opt.id;
+    while (usedIds.has(id)) {
+      id = `${opt.id}_${Math.random().toString(36).substring(2, 5)}`;
+    }
+    usedIds.add(id);
+    return { ...opt, id };
+  });
+  return {
+    options: sortScheduleOptions([...existing, ...added], refDate),
+    added,
+    skipped: duplicateLines,
+  };
+}
+
+/** Round options sorted oldest first (using the round's reference date). */
+export function getSortedRoundOptions(round: PollRound): PollOption[] {
+  return sortScheduleOptions(round.options, getRoundRefDate(round));
+}
+
+/**
  * Formats a decision / dateInfo into a human-readable string.
  * ja: "2026/8/25(火) 19:00〜21:00", en: "Tue, Aug 25, 2026 19:00–21:00"
  */
@@ -230,6 +345,9 @@ export function formatQuickDate(d: Date, timeStr = '19:00〜'): string {
  */
 export function calculateScheduleResults(round: PollRound, votes: Vote[]): ScheduleResultSummary {
   const totalVoters = votes.length;
+  const sortedOptions = getSortedRoundOptions(round);
+  // Keep the color assigned by the original position
+  const originalIndex = new Map(round.options.map((opt, idx) => [opt.id, idx]));
 
   // Build voter rows
   const voterRows: ScheduleVoterRow[] = votes.map(v => {
@@ -265,7 +383,8 @@ export function calculateScheduleResults(round: PollRound, votes: Vote[]): Sched
     triangleCount: number;
     crossCount: number;
     score: number;
-  }> = round.options.map((opt, idx) => {
+  }> = sortedOptions.map(opt => {
+    const idx = originalIndex.get(opt.id) ?? 0;
     let circleCount = 0;
     let triangleCount = 0;
     let crossCount = 0;
@@ -404,7 +523,7 @@ export function formatScheduleExportText(
     lines.push('----------------------------');
     lines.push(isEn ? '[Participants]' : '【参加者一覧】');
     summary.voters.forEach(v => {
-      const respStr = round.options
+      const respStr = getSortedRoundOptions(round)
         .map(opt => {
           const choice = v.responses[opt.id];
           const sym = choice ? getScheduleSymbol(choice, language) : '-';
@@ -431,10 +550,11 @@ export function formatScheduleCsv(
   const symCircle = getScheduleSymbol('circle', language);
   const symTriangle = getScheduleSymbol('triangle', language);
   const symCross = getScheduleSymbol('cross', language);
+  const sortedOptions = getSortedRoundOptions(round);
 
   const header = [
     isEn ? '"Respondent"' : '"回答者"',
-    ...round.options.map(o => `"${o.text.replace(/"/g, '""')}"`),
+    ...sortedOptions.map(o => `"${o.text.replace(/"/g, '""')}"`),
     isEn ? '"Comment"' : '"コメント"',
     isEn ? '"Date Submitted"' : '"回答日時"',
   ];
@@ -443,7 +563,7 @@ export function formatScheduleCsv(
   summary.voters.forEach(v => {
     const row = [
       `"${v.userDisplayName.replace(/"/g, '""')}"`,
-      ...round.options.map(opt => {
+      ...sortedOptions.map(opt => {
         const choice = v.responses[opt.id];
         return choice ? getScheduleSymbol(choice, language) : '-';
       }),
@@ -457,7 +577,7 @@ export function formatScheduleCsv(
   rows.push([]);
   rows.push([
     isEn ? `[Total ${symCircle}]` : `【集計: ${symCircle}】`,
-    ...round.options.map(opt => {
+    ...sortedOptions.map(opt => {
       const optSummary = summary.options.find(o => o.option.id === opt.id);
       return String(optSummary?.circleCount ?? 0);
     }),
@@ -467,7 +587,7 @@ export function formatScheduleCsv(
 
   rows.push([
     isEn ? `[Total ${symTriangle}]` : `【集計: ${symTriangle}】`,
-    ...round.options.map(opt => {
+    ...sortedOptions.map(opt => {
       const optSummary = summary.options.find(o => o.option.id === opt.id);
       return String(optSummary?.triangleCount ?? 0);
     }),
@@ -477,7 +597,7 @@ export function formatScheduleCsv(
 
   rows.push([
     isEn ? `[Total ${symCross}]` : `【集計: ${symCross}】`,
-    ...round.options.map(opt => {
+    ...sortedOptions.map(opt => {
       const optSummary = summary.options.find(o => o.option.id === opt.id);
       return String(optSummary?.crossCount ?? 0);
     }),
@@ -487,7 +607,7 @@ export function formatScheduleCsv(
 
   rows.push([
     isEn ? '[Score]' : '【スコア】',
-    ...round.options.map(opt => {
+    ...sortedOptions.map(opt => {
       const optSummary = summary.options.find(o => o.option.id === opt.id);
       return String(optSummary?.score ?? 0);
     }),

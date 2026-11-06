@@ -92,7 +92,7 @@ interface ScheduleDecision {
 | `startDate` | `string` (ISO) | ◯ | - | 投票開始日時（ISO 8601 形式）。 |
 | `endDate` | `string` (ISO) | ◯ | - | 投票終了日時・締切（ISO 8601 形式）。 |
 | `maxChoices` | `number` | ◯ | `1` | 1人あたりの最大選択可能数（単一選択: 1、複数選択: 2以上）。 |
-| `options` | `Array<PollOption>` | ◯ | - | 候補選択肢の配列（2〜20件）。 |
+| `options` | `Array<PollOption>` | ◯ | - | 候補選択肢の配列（2〜20件）。日程調整では最大30件で、古い順に並べて保存・表示し、管理者が作成後に追加できる（重複はスキップ、`maxChoices` は候補数に追従）。 |
 | `status` | `string` | ◯ | `'open'` | ラウンド状態: `'scheduled'`（開始前） \| `'open'`（受付中） \| `'closed'`（締切済み）。 |
 | `runoffSourceRound`| `number` | - | `undefined`| 決選投票の元となった前ラウンド番号。 |
 | `candidateSource` | `string` | - | `'manual'` | 候補抽出元: `'manual'`（手動） \| `'tie_breaker'`（同率1位のみ） \| `'top_k'`（上位K件）。 |

@@ -13,11 +13,12 @@ import {
   serverTimestamp,
   Timestamp,
   writeBatch,
+  runTransaction,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 import { Poll, PollEventInfo, PollRound, ScheduleDecision, Vote } from './types';
 import { computeSecretHash, InvalidEditKeyError } from './editKey';
-import { sanitizeHttpUrl } from './scheduleUtils';
+import { sanitizeHttpUrl, mergeScheduleCandidates } from './scheduleUtils';
 
 // Mock storage keys for offline/demo mode
 const MOCK_POLLS_KEY = 'votica_mock_polls';
@@ -853,6 +854,46 @@ export async function updateRoundStatus(
 
   const roundDocRef = doc(db, 'polls', pollId, 'rounds', roundNumber.toString());
   await updateDoc(roundDocRef, { status });
+}
+
+/**
+ * Adds candidate dates to an existing schedule round (admin only).
+ * Duplicates are skipped, options are stored sorted oldest first and maxChoices follows the option count.
+ * Throws ScheduleCandidateLimitError when the total would exceed 30.
+ * Returns the number of added candidates.
+ */
+export async function addScheduleOptions(
+  pollId: string,
+  roundNumber: number,
+  lines: string[]
+): Promise<{ addedCount: number; skippedCount: number }> {
+  const refDate = new Date();
+
+  if (!isFirebaseConfigured || !db) {
+    const rounds = getMockRounds();
+    const round = rounds[pollId]?.[roundNumber];
+    if (!round) throw new Error('ラウンドが見つかりません');
+    const merged = mergeScheduleCandidates(round.options, lines, refDate);
+    rounds[pollId][roundNumber] = { ...round, options: merged.options, maxChoices: merged.options.length };
+    saveMockRounds(rounds);
+    return { addedCount: merged.added.length, skippedCount: merged.skipped.length };
+  }
+
+  const firestore = db;
+  const roundDocRef = doc(firestore, 'polls', pollId, 'rounds', roundNumber.toString());
+  return runTransaction(firestore, async tx => {
+    const snap = await tx.get(roundDocRef);
+    if (!snap.exists()) throw new Error('ラウンドが見つかりません');
+    const current = (snap.data().options || []) as PollRound['options'];
+    const merged = mergeScheduleCandidates(current, lines, refDate);
+    if (merged.added.length > 0) {
+      tx.update(roundDocRef, {
+        options: cleanFirestoreData(merged.options),
+        maxChoices: merged.options.length,
+      });
+    }
+    return { addedCount: merged.added.length, skippedCount: merged.skipped.length };
+  });
 }
 
 /**

@@ -13,6 +13,7 @@ A versatile voting web application built for GitHub Pages + Firebase (Authentica
 - **Edit Password for No-Login Responses**: Respondents without login can set an edit password and edit or delete only their own response from any device via the "Edit" link (verified by Firestore Security Rules).
 - **Admin Response Management**: Admins can correct or delete duplicate, test, or mistaken responses individually.
 - **Calendar Date Picker**: Select multiple dates on a month calendar and combine them with time-slot templates such as "19:00〜" or "All day".
+- **Add Candidates Later & Chronological Order**: Admins can add candidate dates to an existing schedule poll (up to 30). Candidates are always shown oldest first.
 - **Event Detail Fields**: Location, map/venue URL, fee (budget), and notes, separate from the description and editable later.
 - **Multi-Round Runoff Voting**: Easily conduct successive runoff voting rounds (Round 2, Round 3, etc.) by extracting top candidates or tied winners.
 - **Automatic Tie Detection**: Automatically alerts the administrator when a round ends in a tie for 1st place, allowing one-click runoff round creation.

@@ -92,7 +92,7 @@ Responses stay open after the decision (close the round to stop accepting respon
 | `startDate` | `string` (ISO) | Yes | - | Voting start datetime in ISO 8601 format. |
 | `endDate` | `string` (ISO) | Yes | - | Voting end/deadline datetime in ISO 8601 format. |
 | `maxChoices` | `number` | Yes | `1` | Maximum number of options a voter can select (1 to N). |
-| `options` | `Array<PollOption>` | Yes | - | Array of selectable candidate options (2 to 20 items). |
+| `options` | `Array<PollOption>` | Yes | - | Array of selectable candidate options (2 to 20 items). For schedule polls: up to 30, stored and displayed oldest first; admins can add more after creation (duplicates skipped, `maxChoices` follows the count). |
 | `status` | `string` | Yes | `'open'` | Round status: `'scheduled'` \| `'open'` \| `'closed'`. |
 | `runoffSourceRound`| `number` | No | `undefined`| The originating round number that prompted this runoff. |
 | `candidateSource` | `string` | No | `'manual'` | Extraction method: `'manual'` \| `'tie_breaker'` \| `'top_k'`. |

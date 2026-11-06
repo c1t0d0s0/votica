@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -16,6 +16,7 @@ import {
   adminUpdateVote,
   setPollDecision,
   updatePollEventInfo,
+  addScheduleOptions,
   LegacyVoteError,
   VoteEditAuth,
 } from '../lib/firestoreService';
@@ -39,7 +40,7 @@ import {
   InvalidEditKeyError,
 } from '../lib/editKey';
 import { calculateRoundResults } from '../lib/runoffUtils';
-import { calculateScheduleResults } from '../lib/scheduleUtils';
+import { calculateScheduleResults, getSortedRoundOptions, ScheduleCandidateLimitError } from '../lib/scheduleUtils';
 import { getTheme } from '../lib/themes';
 import { VoteOptionCard } from '../components/poll/VoteOptionCard';
 import { ScheduleVotingTable } from '../components/schedule/ScheduleVotingTable';
@@ -51,6 +52,7 @@ import {
 import { EditPasswordPromptModal } from '../components/schedule/EditPasswordPromptModal';
 import { DecideScheduleModal } from '../components/schedule/DecideScheduleModal';
 import { EditEventInfoModal } from '../components/schedule/EditEventInfoModal';
+import { AddScheduleOptionsModal } from '../components/schedule/AddScheduleOptionsModal';
 import { EventMetaList, DecisionBanner } from '../components/schedule/ScheduleEventDetails';
 import { CountdownTimer } from '../components/poll/CountdownTimer';
 import { ShareModal } from '../components/poll/ShareModal';
@@ -77,6 +79,8 @@ import {
   KeyRound,
   CalendarCheck,
   Pencil,
+  CalendarPlus,
+  Info,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -119,6 +123,7 @@ export const PollVotingPage: React.FC = () => {
   // Decision (#2) & event info (#6) modals
   const [isDecideModalOpen, setIsDecideModalOpen] = useState(false);
   const [isEventInfoModalOpen, setIsEventInfoModalOpen] = useState(false);
+  const [isAddOptionsModalOpen, setIsAddOptionsModalOpen] = useState(false);
 
   // Self-declared nickname and persistent anonymous device ID for no-login polls
   const [anonName, setAnonName] = useState<string>(() => {
@@ -203,6 +208,12 @@ export const PollVotingPage: React.FC = () => {
       }
     }
   }, [currentRoundData, roundVotes, poll?.pollType]);
+
+  // Schedule candidates are always displayed oldest first
+  const sortedScheduleOptions = useMemo(
+    () => (currentRoundData ? getSortedRoundOptions(currentRoundData) : []),
+    [currentRoundData]
+  );
 
   // Automatically mark poll as closed (決着・完了) when 1st place winner is confirmed (for standard poll)
   useEffect(() => {
@@ -494,6 +505,26 @@ export const PollVotingPage: React.FC = () => {
       showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
     }
   };
+
+  const handleAddOptions = async (lines: string[]) => {
+    try {
+      const { addedCount } = await addScheduleOptions(poll.id, viewRoundNumber, lines);
+      showToast('success', t('scheduleEx.toastOptionsAdded', { count: addedCount }));
+      setIsAddOptionsModalOpen(false);
+    } catch (err: any) {
+      if (err instanceof ScheduleCandidateLimitError) {
+        showToast('error', t('scheduleEx.toastOptionsLimit', { remaining: err.remaining }));
+      } else {
+        showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
+      }
+    }
+  };
+
+  // Number of candidates the current voter has not answered yet (e.g. added after responding)
+  const unansweredOptionCount =
+    isScheduleMode && userVote?.scheduleResponses
+      ? sortedScheduleOptions.filter(opt => !userVote.scheduleResponses?.[opt.id]).length
+      : 0;
 
   const handleSaveEventInfo = async (info: PollEventInfo) => {
     try {
@@ -822,6 +853,14 @@ export const PollVotingPage: React.FC = () => {
                 >
                   {t('scheduleEx.editEventInfoBtn')}
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAddOptionsModalOpen(true)}
+                  leftIcon={<CalendarPlus className="w-3.5 h-3.5" />}
+                >
+                  {t('scheduleEx.addOptionsBtn')}
+                </Button>
                 {!poll.decision && scheduleSummary && (
                   <Button
                     variant="success"
@@ -972,13 +1011,21 @@ export const PollVotingPage: React.FC = () => {
 
         {isScheduleMode ? (
           /* Schedule Attendance Voting UI */
+          <>
+          {unansweredOptionCount > 0 && isVotingOpen && (
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-900 flex items-start gap-2">
+              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>{t('scheduleEx.newOptionsNotice', { count: unansweredOptionCount })}</span>
+            </div>
+          )}
           <ScheduleVotingTable
-            options={currentRoundData.options}
+            options={sortedScheduleOptions}
             responses={scheduleResponses}
             onChangeResponse={handleScheduleResponseChange}
             onSetAllResponses={handleScheduleSetAll}
             disabled={!isVotingOpen}
           />
+          </>
         ) : (
           /* Standard Options List */
           <div className="grid grid-cols-1 gap-3">
@@ -1174,7 +1221,7 @@ export const PollVotingPage: React.FC = () => {
           <ScheduleResponseEditModal
             isOpen={Boolean(editTarget)}
             onClose={() => setEditTarget(null)}
-            options={currentRoundData.options}
+            options={sortedScheduleOptions}
             vote={editTarget?.vote || null}
             mode={editTarget?.mode || 'owner'}
             onSave={handleEditSave}
@@ -1196,6 +1243,12 @@ export const PollVotingPage: React.FC = () => {
               onConfirm={handleConfirmDecision}
             />
           )}
+          <AddScheduleOptionsModal
+            isOpen={isAddOptionsModalOpen}
+            onClose={() => setIsAddOptionsModalOpen(false)}
+            existingOptions={currentRoundData.options}
+            onSubmit={handleAddOptions}
+          />
           <EditEventInfoModal
             isOpen={isEventInfoModalOpen}
             onClose={() => setIsEventInfoModalOpen(false)}

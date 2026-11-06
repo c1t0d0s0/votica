@@ -15,6 +15,7 @@ import {
   setPollDecision,
   updatePollEventInfo,
   LegacyVoteError,
+  addScheduleOptions,
 } from './firestoreService';
 import { computeProof, InvalidEditKeyError } from './editKey';
 import { PollOption, PollRound } from './types';
@@ -354,5 +355,21 @@ describe('firestoreService - Poll Discovery and URL-based Access', () => {
 
     await setPollDecision(pollId, null);
     expect((await getPoll(pollId))?.decision).toBeNull();
+  });
+
+  it('adds schedule candidates (mock mode)', async () => {
+    const pollId = await createPoll(
+      {
+        title: 'Sched', description: '', creatorUid: 'admin', creatorDisplayName: 'Admin',
+        status: 'active', isPublicResult: true, requireAuth: false, showVoterNames: true, pollType: 'schedule',
+      },
+      { ...sampleRound, options: [{ id: 'opt_sched_1_a', text: '12/10 19:00〜' }], maxChoices: 1 }
+    );
+    const res = await addScheduleOptions(pollId, 1, ['12/5 19:00〜', '12/10 19:00〜', '12/12 終日']);
+    expect(res).toEqual({ addedCount: 2, skippedCount: 1 });
+    const rounds = JSON.parse(mockStore['votica_mock_rounds']);
+    const round = rounds[pollId][1];
+    expect(round.options.map((o: any) => o.text)).toEqual(['12/5 19:00〜', '12/10 19:00〜', '12/12 終日']);
+    expect(round.maxChoices).toBe(3);
   });
 });
