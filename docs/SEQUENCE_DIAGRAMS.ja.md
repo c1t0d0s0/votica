@@ -267,3 +267,51 @@ sequenceDiagram
         Home-->>Invited: 公開中の投票タブに poll_xyz が表示される
     end
 ```
+
+---
+
+## 8. 匿名回答の編集パスワード照合フロー（日程調整）
+
+ログインなしの回答者は、回答時に任意の編集用パスワードを設定できます。照合は Firestore セキュリティルールで行い、パスワードや照合値は一般には公開されません。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Voter as 回答者 (端末A)
+    actor Other as 回答者本人 (端末B)
+    participant UI as 投票画面
+    participant Rules as Firestore Rules
+    participant DB as Firestore
+
+    rect rgb(245, 250, 255)
+        Note over Voter,DB: 回答の新規作成
+        Voter->>UI: 名前・出欠・編集用パスワードを入力
+        UI->>UI: proof = sha256("pollId:voteId:password")
+        UI->>Rules: batch: votes/{id}(isAnonymous: true) + voteSecrets/{id}{hash: sha256(proof)}
+        Rules-->>DB: 新規 vote と secret を同じ batch で作成する場合のみ許可
+        UI->>UI: proof を localStorage にキャッシュ（同じ端末では再入力不要）
+    end
+
+    rect rgb(245, 255, 245)
+        Note over Other,DB: 別端末から編集
+        Other->>UI: 出欠表の名前の横の「編集」をクリック
+        UI-->>Other: パスワードを入力
+        UI->>Rules: batch: voteProofs/{id}{proof} + voteSecrets/{id}{同じ hash}（照合のみ）
+        alt sha256(proof) == 保存済み hash
+            Rules-->>UI: 許可
+            UI-->>Other: 編集モーダルを表示
+            Other->>UI: 保存 / 削除
+            UI->>Rules: batch: voteProofs/{id}{proof} + votes/{id} 更新 or 削除
+            Rules-->>DB: 許可
+        else 一致しない
+            Rules-->>UI: permission-denied
+            UI-->>Other: 「パスワードが違います」
+        end
+    end
+
+    rect rgb(255, 248, 240)
+        Note over UI,DB: 管理者
+        UI->>Rules: votes/{id} 更新・削除（isPollCreator）
+        Rules-->>DB: パスワード不要で許可
+    end
+```

@@ -12,15 +12,31 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  writeBatch,
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
-import { Poll, PollRound, Vote } from './types';
+import { Poll, PollEventInfo, PollRound, ScheduleDecision, Vote } from './types';
+import { computeSecretHash, InvalidEditKeyError } from './editKey';
+import { sanitizeHttpUrl } from './scheduleUtils';
 
 // Mock storage keys for offline/demo mode
 const MOCK_POLLS_KEY = 'votica_mock_polls';
 const MOCK_ROUNDS_KEY = 'votica_mock_rounds';
 const MOCK_VOTES_KEY = 'votica_mock_votes';
 const ACCESSED_POLLS_KEY = 'votica_accessed_poll_ids';
+const MOCK_VOTE_SECRETS_KEY = 'votica_mock_vote_secrets';
+
+/** Thrown when an anonymous vote saved by the legacy scheme (no edit key) is edited by a non-admin. */
+export class LegacyVoteError extends Error {
+  constructor(message = 'LEGACY_VOTE') {
+    super(message);
+    this.name = 'LegacyVoteError';
+  }
+}
+
+function isPermissionDenied(err: any): boolean {
+  return err?.code === 'permission-denied' || /permission/i.test(String(err?.message || ''));
+}
 
 /**
  * Retrieves the list of poll IDs that have been accessed / visited by this client.
@@ -149,6 +165,31 @@ function saveMockVotes(votes: Record<string, Record<number, Record<string, Vote>
   }
   if (typeof window !== 'undefined' && typeof Event !== 'undefined') {
     window.dispatchEvent(new Event('votica_mock_update'));
+  }
+}
+
+function getMockVoteSecrets(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(MOCK_VOTE_SECRETS_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveMockVoteSecrets(secrets: Record<string, string>) {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(MOCK_VOTE_SECRETS_KEY, JSON.stringify(secrets));
+  }
+}
+
+function mockSecretKey(pollId: string, roundNumber: number, voteId: string): string {
+  return `${pollId}/${roundNumber}/${voteId}`;
+}
+
+async function assertMockProof(pollId: string, roundNumber: number, voteId: string, proof: string) {
+  const stored = getMockVoteSecrets()[mockSecretKey(pollId, roundNumber, voteId)];
+  if (!stored || stored !== (await computeSecretHash(proof))) {
+    throw new InvalidEditKeyError();
   }
 }
 
@@ -343,13 +384,36 @@ export function subscribeAllRounds(
 }
 
 /**
+ * Edit-key credentials for anonymous (no-login) votes.
+ * - proof: proof for the current password (or the device key)
+ * - newProof: optional, sets a new password (on create: used instead of `proof`)
+ */
+export interface VoteEditAuth {
+  proof: string;
+  newProof?: string;
+}
+
+function assertRoundOpen(round: { status?: string; endDate?: any } | undefined | null, nowMs: number) {
+  if (!round) return;
+  const endMs = new Date(toIsoDate(round.endDate)).getTime();
+  if (round.status === 'closed' || nowMs > endMs) {
+    throw new Error('この投票ラウンドの受付期間は終了しています');
+  }
+}
+
+/**
  * Casts or updates a vote for the specified user and round.
  * 1 vote per user is enforced by writing to doc `rounds/{roundNumber}/votes/{userId}`.
+ *
+ * Anonymous votes (`vote.isAnonymous === true`) must pass `editAuth`:
+ * on create the secret hash is stored in `voteSecrets/{userId}`, on update the proof is
+ * written to `voteProofs/{userId}` in the same batch and verified by the security rules.
  */
 export async function castVote(
   pollId: string,
   roundNumber: number,
-  vote: Omit<Vote, 'id' | 'votedAt'>
+  vote: Omit<Vote, 'id' | 'votedAt'>,
+  editAuth?: VoteEditAuth
 ): Promise<void> {
   const nowMs = Date.now();
   const nowIso = new Date().toISOString();
@@ -359,41 +423,191 @@ export async function castVote(
     votedAt: nowIso,
   };
 
+  if (vote.isAnonymous && !editAuth) {
+    throw new InvalidEditKeyError();
+  }
+
   if (!isFirebaseConfigured || !db) {
     const rounds = getMockRounds();
-    const round = rounds[pollId]?.[roundNumber];
-    if (round) {
-      const endMs = new Date(round.endDate).getTime();
-      if (round.status === 'closed' || nowMs > endMs) {
-        throw new Error('この投票ラウンドの受付期間は終了しています');
-      }
-    }
+    assertRoundOpen(rounds[pollId]?.[roundNumber], nowMs);
 
     const allVotes = getMockVotes();
     if (!allVotes[pollId]) allVotes[pollId] = {};
     if (!allVotes[pollId][roundNumber]) allVotes[pollId][roundNumber] = {};
+    const existing = allVotes[pollId][roundNumber][vote.userId];
+
+    if (vote.isAnonymous && editAuth) {
+      const secrets = getMockVoteSecrets();
+      const key = mockSecretKey(pollId, roundNumber, vote.userId);
+      if (!existing) {
+        secrets[key] = await computeSecretHash(editAuth.newProof || editAuth.proof);
+      } else {
+        if (!existing.isAnonymous) throw new LegacyVoteError();
+        await assertMockProof(pollId, roundNumber, vote.userId, editAuth.proof);
+        if (editAuth.newProof) secrets[key] = await computeSecretHash(editAuth.newProof);
+      }
+      saveMockVoteSecrets(secrets);
+    }
+
     allVotes[pollId][roundNumber][vote.userId] = voteDocData;
     saveMockVotes(allVotes);
     recordAccessedPoll(pollId);
     return;
   }
 
-  const roundDocRef = doc(db, 'polls', pollId, 'rounds', roundNumber.toString());
+  const roundId = roundNumber.toString();
+  const roundDocRef = doc(db, 'polls', pollId, 'rounds', roundId);
   const roundSnap = await getDoc(roundDocRef);
   if (roundSnap.exists()) {
-    const roundData = roundSnap.data();
-    const endMs = new Date(toIsoDate(roundData.endDate)).getTime();
-    if (roundData.status === 'closed' || nowMs > endMs) {
-      throw new Error('この投票ラウンドの受付期間は終了しています');
+    assertRoundOpen(roundSnap.data(), nowMs);
+  }
+
+  const voteDocRef = doc(db, 'polls', pollId, 'rounds', roundId, 'votes', vote.userId);
+  const firestoreVote = {
+    ...cleanFirestoreData(voteDocData),
+    votedAt: serverTimestamp(),
+  };
+
+  if (!vote.isAnonymous || !editAuth) {
+    await setDoc(voteDocRef, firestoreVote);
+    recordAccessedPoll(pollId);
+    return;
+  }
+
+  const existingSnap = await getDoc(voteDocRef);
+  const secretRef = doc(db, 'polls', pollId, 'rounds', roundId, 'voteSecrets', vote.userId);
+  const proofRef = doc(db, 'polls', pollId, 'rounds', roundId, 'voteProofs', vote.userId);
+  const batch = writeBatch(db);
+
+  if (!existingSnap.exists()) {
+    batch.set(voteDocRef, firestoreVote);
+    batch.set(secretRef, { hash: await computeSecretHash(editAuth.newProof || editAuth.proof) });
+  } else {
+    if (existingSnap.data().isAnonymous !== true) throw new LegacyVoteError();
+    batch.set(proofRef, { proof: editAuth.proof });
+    batch.set(voteDocRef, firestoreVote);
+    if (editAuth.newProof) {
+      batch.set(secretRef, { hash: await computeSecretHash(editAuth.newProof) });
     }
   }
 
-  const voteDocRef = doc(db, 'polls', pollId, 'rounds', roundNumber.toString(), 'votes', vote.userId);
-  await setDoc(voteDocRef, {
-    ...cleanFirestoreData(voteDocData),
-    votedAt: serverTimestamp(),
-  });
+  try {
+    await batch.commit();
+  } catch (err) {
+    if (isPermissionDenied(err)) throw new InvalidEditKeyError();
+    throw err;
+  }
   recordAccessedPoll(pollId);
+}
+
+/**
+ * Verifies an edit key for an anonymous vote without changing the vote.
+ * Firestore: re-writes the same secret hash together with the proof; the rules reject it when the key is wrong.
+ * Throws InvalidEditKeyError when the key does not match, LegacyVoteError if the vote has no edit key.
+ */
+export async function verifyVoteEditKey(
+  pollId: string,
+  roundNumber: number,
+  voteId: string,
+  proof: string
+): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    const existing = getMockVotes()[pollId]?.[roundNumber]?.[voteId];
+    if (existing && !existing.isAnonymous) throw new LegacyVoteError();
+    await assertMockProof(pollId, roundNumber, voteId, proof);
+    return;
+  }
+
+  const roundId = roundNumber.toString();
+  const voteSnap = await getDoc(doc(db, 'polls', pollId, 'rounds', roundId, 'votes', voteId));
+  if (voteSnap.exists() && voteSnap.data().isAnonymous !== true) throw new LegacyVoteError();
+
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'polls', pollId, 'rounds', roundId, 'voteProofs', voteId), { proof });
+  batch.set(doc(db, 'polls', pollId, 'rounds', roundId, 'voteSecrets', voteId), {
+    hash: await computeSecretHash(proof),
+  });
+  try {
+    await batch.commit();
+  } catch (err) {
+    if (isPermissionDenied(err)) throw new InvalidEditKeyError();
+    throw err;
+  }
+}
+
+/**
+ * Deletes a vote.
+ * - Admin (poll creator) / Google user deleting own vote: no proof needed.
+ * - Anonymous voter: pass the proof of the edit key.
+ * `isAnonymous` indicates the vote has an edit-key secret that must be removed too.
+ */
+export async function deleteVote(
+  pollId: string,
+  roundNumber: number,
+  voteId: string,
+  options: { proof?: string; isAnonymous?: boolean } = {}
+): Promise<void> {
+  if (!isFirebaseConfigured || !db) {
+    if (options.proof) {
+      await assertMockProof(pollId, roundNumber, voteId, options.proof);
+    }
+    const allVotes = getMockVotes();
+    if (allVotes[pollId]?.[roundNumber]?.[voteId]) {
+      delete allVotes[pollId][roundNumber][voteId];
+      saveMockVotes(allVotes);
+    }
+    const secrets = getMockVoteSecrets();
+    delete secrets[mockSecretKey(pollId, roundNumber, voteId)];
+    saveMockVoteSecrets(secrets);
+    return;
+  }
+
+  const roundId = roundNumber.toString();
+  const batch = writeBatch(db);
+  if (options.proof) {
+    batch.set(doc(db, 'polls', pollId, 'rounds', roundId, 'voteProofs', voteId), { proof: options.proof });
+  }
+  batch.delete(doc(db, 'polls', pollId, 'rounds', roundId, 'votes', voteId));
+  if (options.isAnonymous || options.proof) {
+    batch.delete(doc(db, 'polls', pollId, 'rounds', roundId, 'voteSecrets', voteId));
+  }
+  try {
+    await batch.commit();
+  } catch (err) {
+    if (options.proof && isPermissionDenied(err)) throw new InvalidEditKeyError();
+    throw err;
+  }
+}
+
+/**
+ * Admin (poll creator) edits another participant's vote. Keeps userId / votedAt.
+ * Allowed even after the round is closed.
+ */
+export async function adminUpdateVote(
+  pollId: string,
+  roundNumber: number,
+  voteId: string,
+  patch: Pick<Vote, 'userDisplayName' | 'selectedOptionIds' | 'scheduleResponses' | 'comment'>
+): Promise<void> {
+  const cleanedPatch = {
+    userDisplayName: patch.userDisplayName,
+    selectedOptionIds: patch.selectedOptionIds,
+    scheduleResponses: patch.scheduleResponses,
+    comment: patch.comment || '',
+    editedByAdmin: true,
+  };
+
+  if (!isFirebaseConfigured || !db) {
+    const allVotes = getMockVotes();
+    const existing = allVotes[pollId]?.[roundNumber]?.[voteId];
+    if (!existing) throw new Error('回答が見つかりません');
+    allVotes[pollId][roundNumber][voteId] = { ...existing, ...cleanedPatch };
+    saveMockVotes(allVotes);
+    return;
+  }
+
+  const voteDocRef = doc(db, 'polls', pollId, 'rounds', roundNumber.toString(), 'votes', voteId);
+  await updateDoc(voteDocRef, cleanFirestoreData(cleanedPatch));
 }
 
 /**
@@ -642,6 +856,60 @@ export async function updateRoundStatus(
 }
 
 /**
+ * Sets (or clears with null) the confirmed event date of a schedule poll. Admin only.
+ */
+export async function setPollDecision(pollId: string, decision: ScheduleDecision | null): Promise<void> {
+  const nowIso = new Date().toISOString();
+  if (!isFirebaseConfigured || !db) {
+    const polls = getMockPolls();
+    if (polls[pollId]) {
+      polls[pollId].decision = decision;
+      polls[pollId].updatedAt = nowIso;
+      saveMockPolls(polls);
+    }
+    return;
+  }
+
+  await updateDoc(doc(db, 'polls', pollId), {
+    decision: decision ? cleanFirestoreData(decision) : null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Normalizes event meta info (trims, validates URL to http(s) only).
+ */
+export function normalizeEventInfo(info: PollEventInfo): Required<PollEventInfo> {
+  return {
+    location: (info.location || '').trim().slice(0, 200),
+    locationUrl: sanitizeHttpUrl(info.locationUrl).slice(0, 1000),
+    fee: (info.fee || '').trim().slice(0, 100),
+    notes: (info.notes || '').trim().slice(0, 1000),
+  };
+}
+
+/**
+ * Updates event meta info (location / map URL / fee / notes). Admin only.
+ */
+export async function updatePollEventInfo(pollId: string, info: PollEventInfo): Promise<void> {
+  const normalized = normalizeEventInfo(info);
+  const nowIso = new Date().toISOString();
+  if (!isFirebaseConfigured || !db) {
+    const polls = getMockPolls();
+    if (polls[pollId]) {
+      polls[pollId] = { ...polls[pollId], ...normalized, updatedAt: nowIso };
+      saveMockPolls(polls);
+    }
+    return;
+  }
+
+  await updateDoc(doc(db, 'polls', pollId), {
+    ...normalized,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
  * Retrieves polls created by the specified user.
  */
 export async function getUserCreatedPolls(userId: string): Promise<Poll[]> {
@@ -781,6 +1049,12 @@ export async function deletePoll(pollId: string, currentUserId?: string): Promis
       saveMockVotes(votes);
     }
 
+    const secrets = getMockVoteSecrets();
+    for (const key of Object.keys(secrets)) {
+      if (key.startsWith(`${pollId}/`)) delete secrets[key];
+    }
+    saveMockVoteSecrets(secrets);
+
     removeAccessedPoll(pollId);
     return;
   }
@@ -808,6 +1082,16 @@ export async function deletePoll(pollId: string, currentUserId?: string): Promis
         }
       } catch (e) {
         console.warn(`Error deleting votes for round ${roundDoc.id}:`, e);
+      }
+      for (const sub of ['voteSecrets', 'voteProofs']) {
+        try {
+          const subSnap = await getDocs(collection(db, 'polls', pollId, 'rounds', roundDoc.id, sub));
+          for (const subDoc of subSnap.docs) {
+            await deleteDoc(subDoc.ref);
+          }
+        } catch (e) {
+          console.warn(`Error deleting ${sub} for round ${roundDoc.id}:`, e);
+        }
       }
       await deleteDoc(roundDoc.ref);
     }

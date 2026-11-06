@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Poll, PollRound, ScheduleChoice, ScheduleResultSummary } from '../../lib/types';
+import { Poll, PollRound, ScheduleChoice, ScheduleResultSummary, ScheduleVoterRow } from '../../lib/types';
 import { SCHEDULE_SYMBOLS, getScheduleSymbol, formatScheduleExportText, formatScheduleCsv } from '../../lib/scheduleUtils';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -11,20 +11,28 @@ import {
   Crown,
   MessageSquare,
   Calendar,
+  Pencil,
+  CalendarCheck,
 } from 'lucide-react';
 
 interface ScheduleResultMatrixProps {
   poll: Poll;
   round: PollRound;
   summary: ScheduleResultSummary;
+  /** Returns true when the current viewer may open the edit flow for this voter. */
+  canEditVoter?: (voter: ScheduleVoterRow) => boolean;
+  onEditVoter?: (voter: ScheduleVoterRow) => void;
 }
 
 export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
   poll,
   round,
   summary,
+  canEditVoter,
+  onEditVoter,
 }) => {
   const { t, language } = useTranslation();
+  const decidedOptionId = poll.decision?.optionId;
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
 
@@ -182,6 +190,16 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                       <span className="truncate max-w-[90px] block" title={voter.userDisplayName}>
                         {voter.userDisplayName}
                       </span>
+                      {onEditVoter && canEditVoter?.(voter) && (
+                        <button
+                          type="button"
+                          onClick={() => onEditVoter(voter)}
+                          className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                        >
+                          <Pencil className="w-2.5 h-2.5" />
+                          <span>{t('scheduleEx.editLink')}</span>
+                        </button>
+                      )}
                     </div>
                   </th>
                 ))}
@@ -189,24 +207,35 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {summary.options.map(optSummary => {
+                const isDecided = optSummary.option.id === decidedOptionId;
                 return (
                   <tr
                     key={optSummary.option.id}
                     className={`hover:bg-slate-50/60 transition-colors ${
-                      optSummary.isBest ? 'bg-amber-50/40' : ''
+                      isDecided ? 'bg-emerald-50/60' : optSummary.isBest ? 'bg-amber-50/40' : ''
                     }`}
                   >
                     {/* Date label */}
                     <td
                       className={`py-3.5 px-4 font-bold text-slate-900 sticky left-0 z-10 ${
-                        optSummary.isBest ? 'bg-amber-50/90 backdrop-blur-xs' : 'bg-white/95 backdrop-blur-xs'
+                        isDecided
+                          ? 'bg-emerald-50/95 backdrop-blur-xs'
+                          : optSummary.isBest
+                          ? 'bg-amber-50/90 backdrop-blur-xs'
+                          : 'bg-white/95 backdrop-blur-xs'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         {optSummary.isBest && (
                           <Crown className="w-4 h-4 text-amber-500 fill-amber-400 shrink-0" />
                         )}
                         <span className="leading-snug">{optSummary.option.text}</span>
+                        {isDecided && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
+                            <CalendarCheck className="w-3 h-3" />
+                            {t('scheduleEx.decidedRowBadge')}
+                          </span>
+                        )}
                       </div>
                       {optSummary.option.description && (
                         <p className="text-[11px] text-slate-400 font-normal mt-0.5">

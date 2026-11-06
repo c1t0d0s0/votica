@@ -51,8 +51,30 @@ firestore-root
 | `showVoterNames` | `boolean`| ◯ | `false` | `true`: 記名投票（結果画面で投票者名を表示） / `false`: 匿名投票（デフォルト）。 |
 | `currentRound` | `number` | ◯ | `1` | 現在進行中の最新ラウンド番号（1, 2, 3...）。 |
 | `totalRounds` | `number` | ◯ | `1` | これまでに作成された総ラウンド数。 |
+| `pollType` | `string` | - | `'poll'` | `'poll'`（通常投票） \| `'schedule'`（日程調整）。 |
+| `decision` | `ScheduleDecision \| null` | - | `undefined` | 日程調整の開催決定情報（管理者のみ設定・取消可）。下記参照。 |
+| `location` | `string` | - | `undefined` | 開催場所（日程調整、最大200文字）。 |
+| `locationUrl` | `string` | - | `undefined` | 地図・お店のURL（`http(s)://` のみ。保存時と表示時に検証）。 |
+| `fee` | `string` | - | `undefined` | 会費・予算（最大100文字）。 |
+| `notes` | `string` | - | `undefined` | 備考（最大1000文字）。 |
 | `createdAt` | `Timestamp` / `string` | ◯ | サーバー時刻 | 作成日時（ISO 8601 または Server Timestamp）。 |
 | `updatedAt` | `Timestamp` / `string` | ◯ | サーバー時刻 | 最終更新日時。 |
+
+---
+
+#### ネストオブジェクト: `ScheduleDecision`
+```typescript
+interface ScheduleDecision {
+  optionId: string;    // 決定した候補の PollOption.id
+  label: string;       // 決定時点の候補テキスト
+  date: string;        // YYYY-MM-DD（閲覧者のローカル時刻として解釈）
+  startTime?: string;  // HH:mm（終日の場合は省略）
+  endTime?: string;    // HH:mm（省略時は .ics / Google カレンダーで開始+2時間）
+  allDay: boolean;
+  decidedAt: string;   // ISO 8601
+}
+```
+決定後も回答の受付は継続します（締め切る場合はラウンドを終了）。
 
 ---
 
@@ -83,6 +105,12 @@ interface PollOption {
   text: string;        // 選択肢の名称・候補名
   description?: string;// 選択肢の補足説明（任意）
   color?: string;      // グラフ表示用のカラーコード (例: "#6366f1")
+  dateInfo?: {         // 日程調整のみ: 候補テキストから解析した日時（解析できない場合は省略）
+    date: string;      // YYYY-MM-DD
+    startTime?: string;// HH:mm
+    endTime?: string;  // HH:mm
+    allDay?: boolean;
+  };
 }
 ```
 
@@ -101,7 +129,25 @@ interface PollOption {
 | `userDisplayName` | `string` | - | `"ユーザー"` | Google表示名または自己申告のニックネーム。 |
 | `userPhotoURL` | `string` | - | `undefined`| Googleプロファイル画像URL（Google認証時）。 |
 | `selectedOptionIds`| `Array<string>` | ◯ | - | 投票した選択肢IDの配列（長さ <= `maxChoices`）。 |
+| `scheduleResponses` | `Record<string, 'circle'\|'triangle'\|'cross'>` | - | `undefined` | 日程調整の候補ごとの出欠。 |
+| `comment` | `string` | - | `undefined` | 一言コメント。 |
+| `isAnonymous` | `boolean` | - | `undefined` | `true`: ログインなし回答で、編集キー（`voteSecrets`）で保護されている。 |
+| `editedByAdmin` | `boolean` | - | `undefined` | 管理者が修正した回答。 |
 | `votedAt` | `Timestamp` / `string` | ◯ | サーバー時刻 | 投票・更新日時。 |
+
+### 2.4 `voteSecrets` / `voteProofs` サブコレクション（匿名回答の編集パスワード）
+
+- **パス**: `/polls/{pollId}/rounds/{roundNumber}/voteSecrets/{voteId}`、`/polls/{pollId}/rounds/{roundNumber}/voteProofs/{voteId}`
+- **説明**: ログインなしで回答した人が、自分の回答だけを編集・削除できるようにするためのデータです。どちらも一般には読み取れません（管理者のみ読み取り可）。
+
+| ドキュメント | フィールド | 説明 |
+| :--- | :--- | :--- |
+| `voteSecrets/{voteId}` | `hash: string` | `sha256hex(proof)`。回答の新規作成と同じ batch でのみ作成できる。 |
+| `voteProofs/{voteId}` | `proof: string` | 編集・削除時に同じ batch で書き込む `proof`。 |
+
+- `proof = sha256hex("{pollId}:{voteId}:{パスワード}")` をクライアント（`crypto.subtle`）で計算します。パスワード未設定の場合は端末ごとのランダムキー（localStorage `votica_anon_editkey`）をパスワードとして使います。
+- セキュリティルールは `hashing.sha256(getAfter(voteProofs).proof) == get(voteSecrets).hash` を確認し、一致した場合のみ回答の更新・削除・パスワード変更を許可します。
+- この機能より前に保存された匿名回答（`isAnonymous` なし・secret なし）は、管理者のみ編集・削除できます。
 
 ---
 
@@ -114,7 +160,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ヘルパー関数
+    // Helper functions
     function getPollData(pollId) {
       return get(/databases/$(database)/documents/polls/$(pollId)).data;
     }
@@ -127,41 +173,113 @@ service cloud.firestore {
       return ('requireAuth' in getPollData(pollId)) && getPollData(pollId).requireAuth == false;
     }
 
+    function votePath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/votes/$(voteId);
+    }
+
+    function voteSecretPath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/voteSecrets/$(voteId);
+    }
+
+    function voteProofPath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/voteProofs/$(voteId);
+    }
+
+    // 匿名回答の編集キー照合:
+    //   voteSecrets/{voteId}.hash == sha256(proof) であり、proof は同じ batch で voteProofs/{voteId} に書かれる。
+    //   get() は batch 適用前、getAfter() は適用後の状態を返す。
+    function hasValidEditProof(pollId, roundNumber, voteId) {
+      let secretPath = voteSecretPath(pollId, roundNumber, voteId);
+      let proofPath = voteProofPath(pollId, roundNumber, voteId);
+      return exists(secretPath)
+        && existsAfter(proofPath)
+        && hashing.sha256(getAfter(proofPath).data.proof).toHexString().lower() == get(secretPath).data.hash;
+    }
+
     // 投票ドキュメント
     match /polls/{pollId} {
-      // URLやIDを知っているユーザーは閲覧可能
+      // 誰でも閲覧可能
       allow read: if true;
 
-      // Googleログイン済みユーザーのみ新規投票フォームを作成可能
-      allow create: if request.auth != null 
+      // ログインユーザーのみ新規作成可能
+      allow create: if request.auth != null
                     && request.resource.data.creatorUid == request.auth.uid;
 
-      // 作成者（管理者）本人のみ更新・削除可能
-      allow update, delete: if request.auth != null 
+      // 作成者（管理者）のみ更新・削除可能
+      allow update, delete: if request.auth != null
                             && resource.data.creatorUid == request.auth.uid;
 
       // 各投票ラウンド
       match /rounds/{roundNumber} {
+        // 誰でも閲覧可能
         allow read: if true;
+
+        // 作成者のみラウンド作成・状態変更可能
         allow write: if isPollCreator(pollId);
 
         // 投票データ (1人1票: document ID = userId)
         match /votes/{userId} {
+          // 誰でも投票結果・集計の読み取りが可能
           allow read: if true;
 
-          // 投票の書き込み (Googleログイン済み または ログイン不要設定の投票)
-          allow create, update: if (
-            // Google認証ユーザーの場合: UIDが一致すること
-            (request.auth != null && request.auth.uid == userId && request.resource.data.userId == request.auth.uid) ||
-            // ログイン不要設定（requireAuth: false）の投票の場合
-            (isAnonymousAllowed(pollId) && request.resource.data.userId == userId)
+          // 新規投票
+          allow create: if request.resource.data.userId == userId && (
+            // Google認証ユーザー: UIDが一致すること
+            (request.auth != null && request.auth.uid == userId) ||
+            // ログイン不要設定の匿名回答: 編集キー（voteSecrets）を同じ batch で作成すること
+            (isAnonymousAllowed(pollId)
+              && request.resource.data.isAnonymous == true
+              && existsAfter(voteSecretPath(pollId, roundNumber, userId)))
+          );
+
+          // 投票の更新（userId は変更不可）
+          allow update: if request.resource.data.userId == resource.data.userId && (
+            (request.auth != null && request.auth.uid == userId) ||
+            // 管理者は他人の回答を修正可能
+            isPollCreator(pollId) ||
+            // 匿名回答: 編集キーが一致する場合のみ
+            (isAnonymousAllowed(pollId)
+              && resource.data.isAnonymous == true
+              && request.resource.data.isAnonymous == true
+              && hasValidEditProof(pollId, roundNumber, userId))
           );
 
           // 投票の取り消し
           allow delete: if (
             (request.auth != null && request.auth.uid == userId) ||
-            isAnonymousAllowed(pollId)
+            isPollCreator(pollId) ||
+            (resource.data.isAnonymous == true && hasValidEditProof(pollId, roundNumber, userId))
           );
+        }
+
+        // 匿名回答の編集キーのハッシュ（一般には非公開）
+        match /voteSecrets/{voteId} {
+          // 管理者のみ読み取り可（投票削除時のクリーンアップ用）
+          allow read: if isPollCreator(pollId);
+
+          // 回答の新規作成と同じ batch でのみ作成可能（他人の回答にキーを後付けできない）
+          allow create: if !exists(votePath(pollId, roundNumber, voteId))
+                        && existsAfter(votePath(pollId, roundNumber, voteId))
+                        && request.resource.data.keys().hasOnly(['hash'])
+                        && request.resource.data.hash is string
+                        && request.resource.data.hash.size() == 64;
+
+          // パスワード変更（現在のキーが一致する場合のみ）
+          allow update: if hasValidEditProof(pollId, roundNumber, voteId)
+                        && request.resource.data.keys().hasOnly(['hash'])
+                        && request.resource.data.hash is string
+                        && request.resource.data.hash.size() == 64;
+
+          allow delete: if isPollCreator(pollId) || hasValidEditProof(pollId, roundNumber, voteId);
+        }
+
+        // 編集時に提示する proof（一般には非公開。上書きされても照合に影響しない）
+        match /voteProofs/{voteId} {
+          allow read: if isPollCreator(pollId);
+          allow create, update: if request.resource.data.keys().hasOnly(['proof'])
+                                && request.resource.data.proof is string
+                                && request.resource.data.proof.size() <= 128;
+          allow delete: if isPollCreator(pollId);
         }
       }
     }
@@ -210,6 +328,9 @@ Firebase未接続時やローカルデモ動作時、Voticaは外部サーバー
 | `votica_lang` | `'ja'` \| `'en'` | 選択中のUI言語（日本語/英語）。 |
 | `votica_anon_uid` | `string` | ログイン不要投票時に生成・永続化される端末固定UID（`anon_...`）。 |
 | `votica_anon_name` | `string` | 最後に使用した自己申告ニックネーム。 |
+| `votica_anon_editkey` | `string` | パスワード未設定の匿名回答で使う端末ごとのランダム編集キー。 |
+| `votica_vote_proofs` | `Record<string, string>` | 照合済みの編集キー proof のキャッシュ（`pollId/round/voteId` → proof、最大200件）。 |
+| `votica_mock_vote_secrets` | `Record<string, string>` | デモモード用の `voteSecrets` 相当（`pollId/round/voteId` → hash）。 |
 
 ### カスタムイベントによるリアクティブ更新
 ローカルデモモード時は、書き込み処理が発生するたびに `votica_mock_update` イベントが発行されます。

@@ -267,3 +267,51 @@ sequenceDiagram
         Home-->>Invited: Displays poll_xyz under Public / Accessed Polls
     end
 ```
+
+---
+
+## 8. Edit Password Verification for No-Login Responses (Schedule)
+
+No-login respondents can optionally set an edit password when responding. Verification happens in the Firestore Security Rules, so neither the password nor the proof is publicly readable.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Voter as Respondent (device A)
+    actor Other as Same respondent (device B)
+    participant UI as Voting page
+    participant Rules as Firestore Rules
+    participant DB as Firestore
+
+    rect rgb(245, 250, 255)
+        Note over Voter,DB: Create response
+        Voter->>UI: Enter name, attendance, edit password
+        UI->>UI: proof = sha256("pollId:voteId:password")
+        UI->>Rules: batch: votes/{id}(isAnonymous: true) + voteSecrets/{id}{hash: sha256(proof)}
+        Rules-->>DB: Allowed only when the vote and secret are created in the same batch
+        UI->>UI: Cache proof in localStorage (no re-entry on the same device)
+    end
+
+    rect rgb(245, 255, 245)
+        Note over Other,DB: Edit from another device
+        Other->>UI: Click "Edit" next to the name in the attendance table
+        UI-->>Other: Ask for password
+        UI->>Rules: batch: voteProofs/{id}{proof} + voteSecrets/{id}{same hash} (verification only)
+        alt sha256(proof) == stored hash
+            Rules-->>UI: Allowed
+            UI-->>Other: Show edit modal
+            Other->>UI: Save / Delete
+            UI->>Rules: batch: voteProofs/{id}{proof} + votes/{id} update or delete
+            Rules-->>DB: Allowed
+        else mismatch
+            Rules-->>UI: permission-denied
+            UI-->>Other: "Incorrect password"
+        end
+    end
+
+    rect rgb(255, 248, 240)
+        Note over UI,DB: Admin
+        UI->>Rules: votes/{id} update / delete (isPollCreator)
+        Rules-->>DB: Allowed without password
+    end
+```

@@ -6,10 +6,89 @@ import {
   calculateScheduleResults,
   formatScheduleExportText,
   formatScheduleCsv,
+  parseCandidateDateInfo,
+  sanitizeHttpUrl,
+  formatDateInfo,
+  buildDecisionFromOption,
 } from './scheduleUtils';
 import { Poll, PollRound, Vote } from './types';
 
 describe('scheduleUtils', () => {
+  describe('parseCandidateDateInfo', () => {
+    const ref = new Date(2026, 7, 1); // 2026-08-01
+
+    it('parses M/D(曜) HH:MM〜', () => {
+      expect(parseCandidateDateInfo('8/25(火) 19:00〜', ref)).toEqual({
+        date: '2026-08-25',
+        startTime: '19:00',
+        allDay: false,
+      });
+    });
+
+    it('parses time ranges', () => {
+      expect(parseCandidateDateInfo('8/25(火) 19:00〜21:30', ref)).toEqual({
+        date: '2026-08-25',
+        startTime: '19:00',
+        endTime: '21:30',
+        allDay: false,
+      });
+      expect(parseCandidateDateInfo('8/25 18:30-20:00', ref)?.endTime).toBe('20:00');
+    });
+
+    it('parses explicit years and Japanese 時 notation', () => {
+      expect(parseCandidateDateInfo('2027/1/5 19時〜', ref)).toEqual({
+        date: '2027-01-05',
+        startTime: '19:00',
+        allDay: false,
+      });
+      expect(parseCandidateDateInfo('2026年9月3日 12時30分〜', ref)?.startTime).toBe('12:30');
+      expect(parseCandidateDateInfo('2026-09-03', ref)).toEqual({ date: '2026-09-03', allDay: true });
+    });
+
+    it('treats 終日 and date-only lines as all-day', () => {
+      expect(parseCandidateDateInfo('8/25(火) 終日', ref)).toEqual({ date: '2026-08-25', allDay: true });
+      expect(parseCandidateDateInfo('8月25日', ref)).toEqual({ date: '2026-08-25', allDay: true });
+    });
+
+    it('rolls dates before the reference date to next year', () => {
+      expect(parseCandidateDateInfo('1/10(土) 19:00〜', new Date(2026, 10, 6))?.date).toBe('2027-01-10');
+      expect(parseCandidateDateInfo('11/6 19:00〜', new Date(2026, 10, 6))?.date).toBe('2026-11-06');
+    });
+
+    it('returns null for unparseable or invalid dates', () => {
+      expect(parseCandidateDateInfo('来週のどこか', ref)).toBeNull();
+      expect(parseCandidateDateInfo('2026/2/30 19:00', ref)).toBeNull();
+    });
+  });
+
+  describe('sanitizeHttpUrl', () => {
+    it('accepts http(s) and adds https:// when missing', () => {
+      expect(sanitizeHttpUrl('https://maps.app.goo.gl/abc')).toBe('https://maps.app.goo.gl/abc');
+      expect(sanitizeHttpUrl('maps.app.goo.gl/abc')).toBe('https://maps.app.goo.gl/abc');
+    });
+
+    it('rejects dangerous or invalid URLs', () => {
+      expect(sanitizeHttpUrl('javascript:alert(1)')).toBe('');
+      expect(sanitizeHttpUrl('data:text/html,hi')).toBe('');
+      expect(sanitizeHttpUrl('not a url')).toBe('');
+      expect(sanitizeHttpUrl('')).toBe('');
+    });
+  });
+
+  describe('formatDateInfo / buildDecisionFromOption', () => {
+    it('formats in Japanese', () => {
+      expect(formatDateInfo({ date: '2026-08-25', startTime: '19:00', endTime: '21:00' }, 'ja')).toBe(
+        '2026/8/25(火) 19:00〜21:00'
+      );
+      expect(formatDateInfo({ date: '2026-08-25', allDay: true }, 'ja')).toBe('2026/8/25(火) 終日');
+    });
+
+    it('prefills a decision from option text when dateInfo is missing', () => {
+      const d = buildDecisionFromOption({ id: 'o1', text: '8/25(火) 19:00〜' }, new Date(2026, 7, 1));
+      expect(d).toEqual({ optionId: 'o1', label: '8/25(火) 19:00〜', date: '2026-08-25', startTime: '19:00', endTime: undefined, allDay: false });
+    });
+  });
+
   describe('parseScheduleCandidateLines', () => {
     it('should split multiline strings and ignore empty lines', () => {
       const raw = `

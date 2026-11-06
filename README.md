@@ -9,6 +9,11 @@ A versatile voting web application built for GitHub Pages + Firebase (Authentica
 ## 🌟 Key Features
 
 - **Schedule Adjustment Mode (Chouseisan-Style Matrix)**: Create date/time coordination polls for team meetings or parties where participants can respond with ◯ (Available), △ (Maybe), ✗ (Unavailable), and ？ (Pending). No login required for participants, with real-time attendance matrix tables.
+- **Event Date Confirmation & Calendar Export**: The admin confirms the final date with "Confirm Event Date"; everyone sees a banner and can add it to Google Calendar or download an `.ics` file for phone calendars.
+- **Edit Password for No-Login Responses**: Respondents without login can set an edit password and edit or delete only their own response from any device via the "Edit" link (verified by Firestore Security Rules).
+- **Admin Response Management**: Admins can correct or delete duplicate, test, or mistaken responses individually.
+- **Calendar Date Picker**: Select multiple dates on a month calendar and combine them with time-slot templates such as "19:00〜" or "All day".
+- **Event Detail Fields**: Location, map/venue URL, fee (budget), and notes, separate from the description and editable later.
 - **Multi-Round Runoff Voting**: Easily conduct successive runoff voting rounds (Round 2, Round 3, etc.) by extracting top candidates or tied winners.
 - **Automatic Tie Detection**: Automatically alerts the administrator when a round ends in a tie for 1st place, allowing one-click runoff round creation.
 - **Strict One-Vote-Per-Person Guarantee**: Powered by Firebase Authentication (Google Sign-In) and Firestore document security keyed by UID to prevent duplicate votes.

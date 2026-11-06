@@ -15,24 +15,47 @@ service cloud.firestore {
       return ('requireAuth' in getPollData(pollId)) && getPollData(pollId).requireAuth == false;
     }
 
+    function votePath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/votes/$(voteId);
+    }
+
+    function voteSecretPath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/voteSecrets/$(voteId);
+    }
+
+    function voteProofPath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/voteProofs/$(voteId);
+    }
+
+    // 匿名回答の編集キー照合:
+    //   voteSecrets/{voteId}.hash == sha256(proof) であり、proof は同じ batch で voteProofs/{voteId} に書かれる。
+    //   get() は batch 適用前、getAfter() は適用後の状態を返す。
+    function hasValidEditProof(pollId, roundNumber, voteId) {
+      let secretPath = voteSecretPath(pollId, roundNumber, voteId);
+      let proofPath = voteProofPath(pollId, roundNumber, voteId);
+      return exists(secretPath)
+        && existsAfter(proofPath)
+        && hashing.sha256(getAfter(proofPath).data.proof).toHexString().lower() == get(secretPath).data.hash;
+    }
+
     // 投票ドキュメント
     match /polls/{pollId} {
       // 誰でも閲覧可能
       allow read: if true;
 
       // ログインユーザーのみ新規作成可能
-      allow create: if request.auth != null 
+      allow create: if request.auth != null
                     && request.resource.data.creatorUid == request.auth.uid;
 
       // 作成者（管理者）のみ更新・削除可能
-      allow update, delete: if request.auth != null 
+      allow update, delete: if request.auth != null
                             && resource.data.creatorUid == request.auth.uid;
 
       // 各投票ラウンド
       match /rounds/{roundNumber} {
         // 誰でも閲覧可能
         allow read: if true;
-        
+
         // 作成者のみラウンド作成・状態変更可能
         allow write: if isPollCreator(pollId);
 
@@ -41,19 +64,64 @@ service cloud.firestore {
           // 誰でも投票結果・集計の読み取りが可能
           allow read: if true;
 
-          // 投票の書き込み (Googleログイン済み または ログイン不要設定の投票)
-          allow create, update: if (
-            // Google認証ユーザーの場合: UIDが一致すること
-            (request.auth != null && request.auth.uid == userId && request.resource.data.userId == request.auth.uid) ||
-            // ログイン不要設定（requireAuth: false）の投票の場合
-            (isAnonymousAllowed(pollId) && request.resource.data.userId == userId)
+          // 新規投票
+          allow create: if request.resource.data.userId == userId && (
+            // Google認証ユーザー: UIDが一致すること
+            (request.auth != null && request.auth.uid == userId) ||
+            // ログイン不要設定の匿名回答: 編集キー（voteSecrets）を同じ batch で作成すること
+            (isAnonymousAllowed(pollId)
+              && request.resource.data.isAnonymous == true
+              && existsAfter(voteSecretPath(pollId, roundNumber, userId)))
+          );
+
+          // 投票の更新（userId は変更不可）
+          allow update: if request.resource.data.userId == resource.data.userId && (
+            (request.auth != null && request.auth.uid == userId) ||
+            // 管理者は他人の回答を修正可能
+            isPollCreator(pollId) ||
+            // 匿名回答: 編集キーが一致する場合のみ
+            (isAnonymousAllowed(pollId)
+              && resource.data.isAnonymous == true
+              && request.resource.data.isAnonymous == true
+              && hasValidEditProof(pollId, roundNumber, userId))
           );
 
           // 投票の取り消し
           allow delete: if (
             (request.auth != null && request.auth.uid == userId) ||
-            isAnonymousAllowed(pollId)
+            isPollCreator(pollId) ||
+            (resource.data.isAnonymous == true && hasValidEditProof(pollId, roundNumber, userId))
           );
+        }
+
+        // 匿名回答の編集キーのハッシュ（一般には非公開）
+        match /voteSecrets/{voteId} {
+          // 管理者のみ読み取り可（投票削除時のクリーンアップ用）
+          allow read: if isPollCreator(pollId);
+
+          // 回答の新規作成と同じ batch でのみ作成可能（他人の回答にキーを後付けできない）
+          allow create: if !exists(votePath(pollId, roundNumber, voteId))
+                        && existsAfter(votePath(pollId, roundNumber, voteId))
+                        && request.resource.data.keys().hasOnly(['hash'])
+                        && request.resource.data.hash is string
+                        && request.resource.data.hash.size() == 64;
+
+          // パスワード変更（現在のキーが一致する場合のみ）
+          allow update: if hasValidEditProof(pollId, roundNumber, voteId)
+                        && request.resource.data.keys().hasOnly(['hash'])
+                        && request.resource.data.hash is string
+                        && request.resource.data.hash.size() == 64;
+
+          allow delete: if isPollCreator(pollId) || hasValidEditProof(pollId, roundNumber, voteId);
+        }
+
+        // 編集時に提示する proof（一般には非公開。上書きされても照合に影響しない）
+        match /voteProofs/{voteId} {
+          allow read: if isPollCreator(pollId);
+          allow create, update: if request.resource.data.keys().hasOnly(['proof'])
+                                && request.resource.data.proof is string
+                                && request.resource.data.proof.size() <= 128;
+          allow delete: if isPollCreator(pollId);
         }
       }
     }

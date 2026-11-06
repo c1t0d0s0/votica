@@ -51,8 +51,30 @@ firestore-root
 | `showVoterNames` | `boolean`| Yes | `false` | If `true`, voter names appear beside options in results (Named Voting). If `false`, votes are anonymous. |
 | `currentRound` | `number` | Yes | `1` | The currently active round number (1, 2, 3...). |
 | `totalRounds` | `number` | Yes | `1` | Total number of rounds created so far. |
+| `pollType` | `string` | No | `'poll'` | `'poll'` (standard) \| `'schedule'` (schedule adjustment). |
+| `decision` | `ScheduleDecision \| null` | No | `undefined` | Confirmed event date for schedule polls (set / cleared by the admin only). See below. |
+| `location` | `string` | No | `undefined` | Event location (schedule polls, max 200 chars). |
+| `locationUrl` | `string` | No | `undefined` | Map / venue URL (`http(s)://` only, validated on save and render). |
+| `fee` | `string` | No | `undefined` | Fee / budget (max 100 chars). |
+| `notes` | `string` | No | `undefined` | Notes (max 1000 chars). |
 | `createdAt` | `Timestamp` / `string` | Yes | Server | ISO 8601 string or Firestore Server Timestamp. |
 | `updatedAt` | `Timestamp` / `string` | Yes | Server | Timestamp of last modification. |
+
+---
+
+#### Nested Object: `ScheduleDecision`
+```typescript
+interface ScheduleDecision {
+  optionId: string;    // PollOption.id of the confirmed candidate
+  label: string;       // Candidate text at the time of decision
+  date: string;        // YYYY-MM-DD (interpreted in the viewer's local time)
+  startTime?: string;  // HH:mm (omitted for all-day)
+  endTime?: string;    // HH:mm (defaults to start + 2h in .ics / Google Calendar)
+  allDay: boolean;
+  decidedAt: string;   // ISO 8601
+}
+```
+Responses stay open after the decision (close the round to stop accepting responses).
 
 ---
 
@@ -83,6 +105,12 @@ interface PollOption {
   text: string;        // Option title / candidate name
   description?: string;// Optional detail
   color?: string;      // Assigned hex color (e.g., "#6366f1")
+  dateInfo?: {         // Schedule polls only: date/time parsed from the candidate text (omitted if unparseable)
+    date: string;      // YYYY-MM-DD
+    startTime?: string;// HH:mm
+    endTime?: string;  // HH:mm
+    allDay?: boolean;
+  };
 }
 ```
 
@@ -101,7 +129,25 @@ interface PollOption {
 | `userDisplayName` | `string` | No | `"User"` | Google display name or self-declared nickname. |
 | `userPhotoURL` | `string` | No | `undefined`| Google profile photo URL (if logged in). |
 | `selectedOptionIds`| `Array<string>` | Yes | - | Array of chosen `PollOption.id`s (length <= `maxChoices`). |
+| `scheduleResponses` | `Record<string, 'circle'\|'triangle'\|'cross'>` | No | `undefined` | Per-candidate attendance for schedule polls. |
+| `comment` | `string` | No | `undefined` | Short comment. |
+| `isAnonymous` | `boolean` | No | `undefined` | `true`: no-login response protected by an edit key (`voteSecrets`). |
+| `editedByAdmin` | `boolean` | No | `undefined` | Response was corrected by the admin. |
 | `votedAt` | `Timestamp` / `string` | Yes | Server | Timestamp when ballot was submitted or updated. |
+
+### 2.4 `voteSecrets` / `voteProofs` Subcollections (edit password for no-login responses)
+
+- **Paths**: `/polls/{pollId}/rounds/{roundNumber}/voteSecrets/{voteId}`, `/polls/{pollId}/rounds/{roundNumber}/voteProofs/{voteId}`
+- **Description**: Lets a no-login respondent edit or delete only their own response. Neither is publicly readable (admin only).
+
+| Document | Field | Description |
+| :--- | :--- | :--- |
+| `voteSecrets/{voteId}` | `hash: string` | `sha256hex(proof)`. Can only be created in the same batch that creates the vote. |
+| `voteProofs/{voteId}` | `proof: string` | The `proof` written in the same batch when editing or deleting. |
+
+- `proof = sha256hex("{pollId}:{voteId}:{password}")` is computed on the client (`crypto.subtle`). Without a password, a random per-device key (localStorage `votica_anon_editkey`) is used as the password.
+- The security rules check `hashing.sha256(getAfter(voteProofs).proof) == get(voteSecrets).hash` and only then allow updating, deleting, or changing the password.
+- Anonymous responses saved before this feature (no `isAnonymous`, no secret) can only be edited or deleted by the admin.
 
 ---
 
@@ -127,39 +173,113 @@ service cloud.firestore {
       return ('requireAuth' in getPollData(pollId)) && getPollData(pollId).requireAuth == false;
     }
 
-    // Poll Document
+    function votePath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/votes/$(voteId);
+    }
+
+    function voteSecretPath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/voteSecrets/$(voteId);
+    }
+
+    function voteProofPath(pollId, roundNumber, voteId) {
+      return /databases/$(database)/documents/polls/$(pollId)/rounds/$(roundNumber)/voteProofs/$(voteId);
+    }
+
+    // 匿名回答の編集キー照合:
+    //   voteSecrets/{voteId}.hash == sha256(proof) であり、proof は同じ batch で voteProofs/{voteId} に書かれる。
+    //   get() は batch 適用前、getAfter() は適用後の状態を返す。
+    function hasValidEditProof(pollId, roundNumber, voteId) {
+      let secretPath = voteSecretPath(pollId, roundNumber, voteId);
+      let proofPath = voteProofPath(pollId, roundNumber, voteId);
+      return exists(secretPath)
+        && existsAfter(proofPath)
+        && hashing.sha256(getAfter(proofPath).data.proof).toHexString().lower() == get(secretPath).data.hash;
+    }
+
+    // 投票ドキュメント
     match /polls/{pollId} {
-      // Direct access allowed if URL/ID is known
+      // 誰でも閲覧可能
       allow read: if true;
 
-      // Authenticated users can create polls
-      allow create: if request.auth != null 
+      // ログインユーザーのみ新規作成可能
+      allow create: if request.auth != null
                     && request.resource.data.creatorUid == request.auth.uid;
 
-      // Creator only can update or delete
-      allow update, delete: if request.auth != null 
+      // 作成者（管理者）のみ更新・削除可能
+      allow update, delete: if request.auth != null
                             && resource.data.creatorUid == request.auth.uid;
 
-      // Round Subcollection
+      // 各投票ラウンド
       match /rounds/{roundNumber} {
+        // 誰でも閲覧可能
         allow read: if true;
+
+        // 作成者のみラウンド作成・状態変更可能
         allow write: if isPollCreator(pollId);
 
-        // Vote Subcollection (1 vote per user ID)
+        // 投票データ (1人1票: document ID = userId)
         match /votes/{userId} {
+          // 誰でも投票結果・集計の読み取りが可能
           allow read: if true;
 
-          allow create, update: if (
-            // Google Authenticated: Auth UID matches Document ID & payload
-            (request.auth != null && request.auth.uid == userId && request.resource.data.userId == request.auth.uid) ||
-            // Anonymous Allowed: Poll configured with requireAuth == false
-            (isAnonymousAllowed(pollId) && request.resource.data.userId == userId)
+          // 新規投票
+          allow create: if request.resource.data.userId == userId && (
+            // Google認証ユーザー: UIDが一致すること
+            (request.auth != null && request.auth.uid == userId) ||
+            // ログイン不要設定の匿名回答: 編集キー（voteSecrets）を同じ batch で作成すること
+            (isAnonymousAllowed(pollId)
+              && request.resource.data.isAnonymous == true
+              && existsAfter(voteSecretPath(pollId, roundNumber, userId)))
           );
 
+          // 投票の更新（userId は変更不可）
+          allow update: if request.resource.data.userId == resource.data.userId && (
+            (request.auth != null && request.auth.uid == userId) ||
+            // 管理者は他人の回答を修正可能
+            isPollCreator(pollId) ||
+            // 匿名回答: 編集キーが一致する場合のみ
+            (isAnonymousAllowed(pollId)
+              && resource.data.isAnonymous == true
+              && request.resource.data.isAnonymous == true
+              && hasValidEditProof(pollId, roundNumber, userId))
+          );
+
+          // 投票の取り消し
           allow delete: if (
             (request.auth != null && request.auth.uid == userId) ||
-            isAnonymousAllowed(pollId)
+            isPollCreator(pollId) ||
+            (resource.data.isAnonymous == true && hasValidEditProof(pollId, roundNumber, userId))
           );
+        }
+
+        // 匿名回答の編集キーのハッシュ（一般には非公開）
+        match /voteSecrets/{voteId} {
+          // 管理者のみ読み取り可（投票削除時のクリーンアップ用）
+          allow read: if isPollCreator(pollId);
+
+          // 回答の新規作成と同じ batch でのみ作成可能（他人の回答にキーを後付けできない）
+          allow create: if !exists(votePath(pollId, roundNumber, voteId))
+                        && existsAfter(votePath(pollId, roundNumber, voteId))
+                        && request.resource.data.keys().hasOnly(['hash'])
+                        && request.resource.data.hash is string
+                        && request.resource.data.hash.size() == 64;
+
+          // パスワード変更（現在のキーが一致する場合のみ）
+          allow update: if hasValidEditProof(pollId, roundNumber, voteId)
+                        && request.resource.data.keys().hasOnly(['hash'])
+                        && request.resource.data.hash is string
+                        && request.resource.data.hash.size() == 64;
+
+          allow delete: if isPollCreator(pollId) || hasValidEditProof(pollId, roundNumber, voteId);
+        }
+
+        // 編集時に提示する proof（一般には非公開。上書きされても照合に影響しない）
+        match /voteProofs/{voteId} {
+          allow read: if isPollCreator(pollId);
+          allow create, update: if request.resource.data.keys().hasOnly(['proof'])
+                                && request.resource.data.proof is string
+                                && request.resource.data.proof.size() <= 128;
+          allow delete: if isPollCreator(pollId);
         }
       }
     }
@@ -208,6 +328,9 @@ When Firebase is not configured or during local demonstration, Votica uses an is
 | `votica_lang` | `'ja'` \| `'en'` | User's preferred interface language. |
 | `votica_anon_uid` | `string` | Persistent device ID for guest voters (`anon_...`). |
 | `votica_anon_name` | `string` | Last used self-declared voter nickname. |
+| `votica_anon_editkey` | `string` | Random per-device edit key used for anonymous responses without a password. |
+| `votica_vote_proofs` | `Record<string, string>` | Cache of verified edit-key proofs (`pollId/round/voteId` → proof, max 200). |
+| `votica_mock_vote_secrets` | `Record<string, string>` | Demo-mode equivalent of `voteSecrets` (`pollId/round/voteId` → hash). |
 
 ### Reactive Sync via Custom Events
 In offline/demo mode, database writes automatically dispatch the window event `votica_mock_update`:

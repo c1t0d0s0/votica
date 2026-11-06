@@ -8,7 +8,15 @@ import {
   recordAccessedPoll,
   removeAccessedPoll,
   deletePoll,
+  castVote,
+  verifyVoteEditKey,
+  deleteVote,
+  adminUpdateVote,
+  setPollDecision,
+  updatePollEventInfo,
+  LegacyVoteError,
 } from './firestoreService';
+import { computeProof, InvalidEditKeyError } from './editKey';
 import { PollOption, PollRound } from './types';
 
 describe('firestoreService - Poll Discovery and URL-based Access', () => {
@@ -228,5 +236,123 @@ describe('firestoreService - Poll Discovery and URL-based Access', () => {
 
     // Poll should still exist
     expect(await getPoll(pollId)).not.toBeNull();
+  });
+
+  describe('anonymous edit key (mock mode)', () => {
+    const anonVote = (name: string) => ({
+      userId: 'anon_x',
+      userDisplayName: name,
+      selectedOptionIds: ['opt_1'],
+      scheduleResponses: { opt_1: 'circle' as const },
+      isAnonymous: true,
+    });
+
+    it('allows edits/deletes only with the matching password', async () => {
+      const pollId = await createPoll(
+        {
+          title: 'Sched',
+          description: '',
+          creatorUid: 'admin',
+          creatorDisplayName: 'Admin',
+          status: 'active',
+          isPublicResult: true,
+          requireAuth: false,
+          showVoterNames: true,
+          pollType: 'schedule',
+        },
+        sampleRound
+      );
+      const good = await computeProof(pollId, 'anon_x', 'pass1234');
+      const bad = await computeProof(pollId, 'anon_x', 'wrong');
+
+      await castVote(pollId, 1, anonVote('Taro'), { proof: good });
+
+      await expect(castVote(pollId, 1, anonVote('Hacked'), { proof: bad })).rejects.toBeInstanceOf(
+        InvalidEditKeyError
+      );
+      await expect(verifyVoteEditKey(pollId, 1, 'anon_x', bad)).rejects.toBeInstanceOf(InvalidEditKeyError);
+      await expect(verifyVoteEditKey(pollId, 1, 'anon_x', good)).resolves.toBeUndefined();
+
+      await castVote(pollId, 1, anonVote('Taro2'), { proof: good });
+
+      // Password change
+      const next = await computeProof(pollId, 'anon_x', 'newpass');
+      await castVote(pollId, 1, anonVote('Taro3'), { proof: good, newProof: next });
+      await expect(verifyVoteEditKey(pollId, 1, 'anon_x', good)).rejects.toBeInstanceOf(InvalidEditKeyError);
+
+      await expect(deleteVote(pollId, 1, 'anon_x', { proof: good, isAnonymous: true })).rejects.toBeInstanceOf(
+        InvalidEditKeyError
+      );
+      await deleteVote(pollId, 1, 'anon_x', { proof: next, isAnonymous: true });
+      const votes = JSON.parse(mockStore['votica_mock_votes'] || '{}');
+      expect(votes[pollId][1]['anon_x']).toBeUndefined();
+    });
+
+    it('rejects anonymous votes without credentials and legacy votes', async () => {
+      const pollId = await createPoll(
+        {
+          title: 'Sched',
+          description: '',
+          creatorUid: 'admin',
+          creatorDisplayName: 'Admin',
+          status: 'active',
+          isPublicResult: true,
+          requireAuth: false,
+          showVoterNames: true,
+          pollType: 'schedule',
+        },
+        sampleRound
+      );
+      await expect(castVote(pollId, 1, anonVote('NoKey'))).rejects.toBeInstanceOf(InvalidEditKeyError);
+
+      // Legacy anonymous vote (no isAnonymous flag / no secret)
+      await castVote(pollId, 1, { userId: 'anon_x', userDisplayName: 'Old', selectedOptionIds: [] });
+      const proof = await computeProof(pollId, 'anon_x', 'x');
+      await expect(castVote(pollId, 1, anonVote('New'), { proof })).rejects.toBeInstanceOf(LegacyVoteError);
+
+      // Admin can still edit it
+      await adminUpdateVote(pollId, 1, 'anon_x', {
+        userDisplayName: 'Fixed',
+        selectedOptionIds: [],
+        scheduleResponses: { opt_1: 'cross' },
+        comment: '',
+      });
+      const votes = JSON.parse(mockStore['votica_mock_votes'] || '{}');
+      expect(votes[pollId][1]['anon_x'].userDisplayName).toBe('Fixed');
+      expect(votes[pollId][1]['anon_x'].editedByAdmin).toBe(true);
+    });
+  });
+
+  it('stores decision and normalized event info', async () => {
+    const pollId = await createPoll(
+      {
+        title: 'Sched',
+        description: '',
+        creatorUid: 'admin',
+        creatorDisplayName: 'Admin',
+        status: 'active',
+        isPublicResult: true,
+        requireAuth: false,
+        showVoterNames: true,
+        pollType: 'schedule',
+      },
+      sampleRound
+    );
+    await setPollDecision(pollId, {
+      optionId: 'opt_1',
+      label: 'A',
+      date: '2026-08-25',
+      allDay: true,
+      decidedAt: new Date().toISOString(),
+    });
+    await updatePollEventInfo(pollId, { location: '  Shibuya ', locationUrl: 'javascript:alert(1)', fee: '¥4000' });
+    const poll = await getPoll(pollId);
+    expect(poll?.decision?.date).toBe('2026-08-25');
+    expect(poll?.location).toBe('Shibuya');
+    expect(poll?.locationUrl).toBe('');
+    expect(poll?.fee).toBe('¥4000');
+
+    await setPollDecision(pollId, null);
+    expect((await getPoll(pollId))?.decision).toBeNull();
   });
 });

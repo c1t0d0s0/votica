@@ -11,14 +11,47 @@ import {
   subscribeAllRounds,
   castVote,
   updatePollStatus,
+  verifyVoteEditKey,
+  deleteVote,
+  adminUpdateVote,
+  setPollDecision,
+  updatePollEventInfo,
+  LegacyVoteError,
+  VoteEditAuth,
 } from '../lib/firestoreService';
-import { Poll, PollRound, Vote, RoundResultSummary, ScheduleChoice, ScheduleResultSummary } from '../lib/types';
+import {
+  Poll,
+  PollRound,
+  Vote,
+  RoundResultSummary,
+  ScheduleChoice,
+  ScheduleResultSummary,
+  ScheduleVoterRow,
+  ScheduleDecision,
+  PollEventInfo,
+} from '../lib/types';
+import {
+  computeProof,
+  getDeviceEditKey,
+  getRememberedProof,
+  rememberProof,
+  forgetProof,
+  InvalidEditKeyError,
+} from '../lib/editKey';
 import { calculateRoundResults } from '../lib/runoffUtils';
 import { calculateScheduleResults } from '../lib/scheduleUtils';
 import { getTheme } from '../lib/themes';
 import { VoteOptionCard } from '../components/poll/VoteOptionCard';
 import { ScheduleVotingTable } from '../components/schedule/ScheduleVotingTable';
 import { ScheduleResultMatrix } from '../components/schedule/ScheduleResultMatrix';
+import {
+  ScheduleResponseEditModal,
+  ScheduleResponseEditValues,
+} from '../components/schedule/ScheduleResponseEditModal';
+import { EditPasswordPromptModal } from '../components/schedule/EditPasswordPromptModal';
+import { DecideScheduleModal } from '../components/schedule/DecideScheduleModal';
+import { EditEventInfoModal } from '../components/schedule/EditEventInfoModal';
+import { EventMetaList, DecisionBanner } from '../components/schedule/ScheduleEventDetails';
 import { CountdownTimer } from '../components/poll/CountdownTimer';
 import { ShareModal } from '../components/poll/ShareModal';
 import { RunoffWizardModal } from '../components/poll/RunoffWizardModal';
@@ -41,6 +74,9 @@ import {
   Trash2,
   Calendar,
   MessageSquare,
+  KeyRound,
+  CalendarCheck,
+  Pencil,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -69,6 +105,20 @@ export const PollVotingPage: React.FC = () => {
   const [isRunoffModalOpen, setIsRunoffModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [pollLoading, setPollLoading] = useState(true);
+
+  // Edit password for anonymous responses (#4)
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
+
+  // Response edit flows (#1 admin / #4 owner)
+  const [editTarget, setEditTarget] = useState<{ vote: Vote; mode: 'admin' | 'owner'; proof?: string } | null>(
+    null
+  );
+  const [passwordTarget, setPasswordTarget] = useState<Vote | null>(null);
+
+  // Decision (#2) & event info (#6) modals
+  const [isDecideModalOpen, setIsDecideModalOpen] = useState(false);
+  const [isEventInfoModalOpen, setIsEventInfoModalOpen] = useState(false);
 
   // Self-declared nickname and persistent anonymous device ID for no-login polls
   const [anonName, setAnonName] = useState<string>(() => {
@@ -266,6 +316,195 @@ export const PollVotingPage: React.FC = () => {
   const isVotingScheduled = nowMs < startMs;
   const isVotingClosed = nowMs > endMs || currentRoundData.status === 'closed';
 
+  // ---- Anonymous edit-key helpers (#4) ----
+  const showEditKeyError = (err: any): boolean => {
+    if (err instanceof InvalidEditKeyError) {
+      showToast('error', t('scheduleEx.toastInvalidPassword'));
+      return true;
+    }
+    if (err instanceof LegacyVoteError) {
+      showToast('error', t('scheduleEx.toastLegacyVote'));
+      return true;
+    }
+    return false;
+  };
+
+  /** Builds the edit-key credentials for the current anonymous voter's own vote. */
+  const buildOwnAnonEditAuth = async (): Promise<VoteEditAuth> => {
+    const newPassword = editPassword.trim();
+    const newProof = newPassword ? await computeProof(poll.id, anonUid, newPassword) : undefined;
+    if (!userVote) {
+      // New response: password if given, otherwise the per-device key
+      return { proof: newProof || (await computeProof(poll.id, anonUid, getDeviceEditKey())) };
+    }
+    const proof =
+      getRememberedProof(poll.id, viewRoundNumber, anonUid) ||
+      (await computeProof(poll.id, anonUid, getDeviceEditKey()));
+    return newProof ? { proof, newProof } : { proof };
+  };
+
+  const validateEditPassword = (): boolean => {
+    const pw = editPassword.trim();
+    if (pw && pw.length < 4) {
+      showToast('error', t('scheduleEx.toastPasswordTooShort'));
+      return false;
+    }
+    return true;
+  };
+
+  const findVote = (voteId: string) => roundVotes.find(v => v.userId === voteId) || null;
+
+  const canEditVoter = (voter: ScheduleVoterRow): boolean =>
+    isAdmin || voter.userId === effectiveUserId || voter.isAnonymous === true;
+
+  const handleEditVoter = async (voter: ScheduleVoterRow) => {
+    const vote = findVote(voter.userId);
+    if (!vote) return;
+
+    // Own response
+    if (voter.userId === effectiveUserId) {
+      if (vote.isAnonymous) {
+        const proof =
+          getRememberedProof(poll.id, viewRoundNumber, vote.userId) ||
+          (await computeProof(poll.id, vote.userId, getDeviceEditKey()));
+        setEditTarget({ vote, mode: 'owner', proof });
+      } else if (currentUser) {
+        setEditTarget({ vote, mode: 'owner' });
+      } else {
+        showToast('error', t('scheduleEx.toastLegacyVote'));
+      }
+      return;
+    }
+
+    if (isAdmin) {
+      setEditTarget({ vote, mode: 'admin' });
+      return;
+    }
+
+    if (vote.isAnonymous) {
+      const remembered = getRememberedProof(poll.id, viewRoundNumber, vote.userId);
+      if (remembered) {
+        setEditTarget({ vote, mode: 'owner', proof: remembered });
+      } else {
+        setPasswordTarget(vote);
+      }
+    }
+  };
+
+  const handlePasswordSubmit = async (password: string) => {
+    if (!passwordTarget) return;
+    const proof = await computeProof(poll.id, passwordTarget.userId, password);
+    try {
+      await verifyVoteEditKey(poll.id, viewRoundNumber, passwordTarget.userId, proof);
+    } catch (err: any) {
+      if (!showEditKeyError(err)) {
+        showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
+      }
+      throw err;
+    }
+    rememberProof(poll.id, viewRoundNumber, passwordTarget.userId, proof);
+    setEditTarget({ vote: passwordTarget, mode: 'owner', proof });
+    setPasswordTarget(null);
+  };
+
+  const handleEditSave = async (values: ScheduleResponseEditValues) => {
+    if (!editTarget) return;
+    const { vote, mode, proof } = editTarget;
+    const circleOptionIds = Object.entries(values.scheduleResponses)
+      .filter(([, choice]) => choice === 'circle')
+      .map(([id]) => id);
+    try {
+      if (mode === 'admin') {
+        await adminUpdateVote(poll.id, viewRoundNumber, vote.userId, {
+          userDisplayName: values.userDisplayName,
+          scheduleResponses: values.scheduleResponses,
+          selectedOptionIds: circleOptionIds,
+          comment: values.comment,
+        });
+      } else {
+        const payload: Omit<Vote, 'id' | 'votedAt'> = {
+          userId: vote.userId,
+          userDisplayName: values.userDisplayName,
+          selectedOptionIds: circleOptionIds,
+          scheduleResponses: values.scheduleResponses,
+          comment: values.comment || undefined,
+        };
+        if (vote.userPhotoURL) payload.userPhotoURL = vote.userPhotoURL;
+        if (vote.isAnonymous) payload.isAnonymous = true;
+        await castVote(poll.id, viewRoundNumber, payload, vote.isAnonymous && proof ? { proof } : undefined);
+      }
+      if (vote.userId === effectiveUserId) {
+        setScheduleResponses(values.scheduleResponses);
+        setScheduleComment(values.comment);
+      }
+      showToast('success', t('scheduleEx.toastSaved'));
+      setEditTarget(null);
+    } catch (err: any) {
+      if (err instanceof InvalidEditKeyError) {
+        forgetProof(poll.id, viewRoundNumber, vote.userId);
+      }
+      if (!showEditKeyError(err)) {
+        showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
+      }
+    }
+  };
+
+  const handleEditDelete = async () => {
+    if (!editTarget) return;
+    const { vote, mode, proof } = editTarget;
+    try {
+      await deleteVote(poll.id, viewRoundNumber, vote.userId, {
+        proof: mode === 'owner' && vote.isAnonymous ? proof : undefined,
+        isAnonymous: vote.isAnonymous,
+      });
+      forgetProof(poll.id, viewRoundNumber, vote.userId);
+      if (vote.userId === effectiveUserId) {
+        setScheduleResponses({});
+        setScheduleComment('');
+      }
+      showToast('success', t('scheduleEx.toastDeleted'));
+      setEditTarget(null);
+    } catch (err: any) {
+      if (!showEditKeyError(err)) {
+        showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
+      }
+    }
+  };
+
+  // ---- Decision (#2) & event info (#6) ----
+  const handleConfirmDecision = async (decision: ScheduleDecision) => {
+    try {
+      await setPollDecision(poll.id, decision);
+      showToast('success', t('scheduleEx.toastDecided'));
+      setIsDecideModalOpen(false);
+      try {
+        confetti({ particleCount: 80, spread: 60, origin: { y: 0.6 } });
+      } catch {}
+    } catch (err: any) {
+      showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
+    }
+  };
+
+  const handleCancelDecision = async () => {
+    if (!window.confirm(t('scheduleEx.confirmCancelDecision'))) return;
+    try {
+      await setPollDecision(poll.id, null);
+      showToast('info', t('scheduleEx.toastDecisionCleared'));
+    } catch (err: any) {
+      showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
+    }
+  };
+
+  const handleSaveEventInfo = async (info: PollEventInfo) => {
+    try {
+      await updatePollEventInfo(poll.id, info);
+      showToast('success', t('scheduleEx.toastEventInfoSaved'));
+      setIsEventInfoModalOpen(false);
+    } catch (err: any) {
+      showToast('error', t('scheduleEx.toastFailed') + (err?.message || ''));
+    }
+  };
+
   // Handle choice toggle for standard poll
   const handleToggleOption = (optionId: string) => {
     if (!isVotingOpen) return;
@@ -320,6 +559,9 @@ export const PollVotingPage: React.FC = () => {
       try {
         localStorage.setItem('votica_anon_name', anonName.trim());
       } catch {}
+      if (isScheduleMode && !validateEditPassword()) {
+        return;
+      }
     }
 
     if (!isVotingOpen) {
@@ -359,7 +601,17 @@ export const PollVotingPage: React.FC = () => {
           votePayload.userPhotoURL = currentUser.photoURL;
         }
 
-        await castVote(poll.id, viewRoundNumber, votePayload);
+        let editAuth: VoteEditAuth | undefined;
+        if (!currentUser) {
+          votePayload.isAnonymous = true;
+          editAuth = await buildOwnAnonEditAuth();
+        }
+
+        await castVote(poll.id, viewRoundNumber, votePayload, editAuth);
+        if (editAuth) {
+          rememberProof(poll.id, viewRoundNumber, voterUid, editAuth.newProof || editAuth.proof);
+          setEditPassword('');
+        }
 
         // Confetti feedback
         try {
@@ -373,7 +625,9 @@ export const PollVotingPage: React.FC = () => {
         showToast('success', userVote ? t('voting.toastVoteUpdated') : t('voting.toastVoteSuccess'));
       } catch (err: any) {
         console.error('Schedule vote failed:', err);
-        showToast('error', t('voting.toastVoteFailed') + (err.message || ''));
+        if (!showEditKeyError(err)) {
+          showToast('error', t('voting.toastVoteFailed') + (err.message || ''));
+        }
       } finally {
         setIsSubmitting(false);
       }
@@ -406,7 +660,16 @@ export const PollVotingPage: React.FC = () => {
         votePayload.userPhotoURL = currentUser.photoURL;
       }
 
-      await castVote(poll.id, viewRoundNumber, votePayload);
+      let editAuth: VoteEditAuth | undefined;
+      if (!currentUser) {
+        votePayload.isAnonymous = true;
+        editAuth = await buildOwnAnonEditAuth();
+      }
+
+      await castVote(poll.id, viewRoundNumber, votePayload, editAuth);
+      if (editAuth) {
+        rememberProof(poll.id, viewRoundNumber, voterUid, editAuth.newProof || editAuth.proof);
+      }
 
       // Confetti feedback
       try {
@@ -420,7 +683,9 @@ export const PollVotingPage: React.FC = () => {
       showToast('success', userVote ? t('voting.toastVoteUpdated') : t('voting.toastVoteSuccess'));
     } catch (err: any) {
       console.error('Vote failed:', err);
-      showToast('error', t('voting.toastVoteFailed') + (err.message || ''));
+      if (!showEditKeyError(err)) {
+        showToast('error', t('voting.toastVoteFailed') + (err.message || ''));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -544,6 +809,31 @@ export const PollVotingPage: React.FC = () => {
                 {poll.description}
               </p>
             )}
+
+            {isScheduleMode && <EventMetaList poll={poll} />}
+
+            {isScheduleMode && isAdmin && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEventInfoModalOpen(true)}
+                  leftIcon={<Pencil className="w-3.5 h-3.5" />}
+                >
+                  {t('scheduleEx.editEventInfoBtn')}
+                </Button>
+                {!poll.decision && scheduleSummary && (
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={() => setIsDecideModalOpen(true)}
+                    leftIcon={<CalendarCheck className="w-3.5 h-3.5" />}
+                  >
+                    {t('scheduleEx.decideBtn')}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Voting Status & Countdown */}
@@ -569,6 +859,16 @@ export const PollVotingPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Confirmed event date banner (#2, #3) */}
+      {isScheduleMode && poll.decision && (
+        <DecisionBanner
+          poll={poll}
+          isAdmin={isAdmin}
+          onChange={() => setIsDecideModalOpen(true)}
+          onCancel={handleCancelDecision}
+        />
+      )}
 
       {/* Round Status Banner when Closed or Progressing (Standard Poll) */}
       {!isScheduleMode && isVotingClosed && (
@@ -723,6 +1023,34 @@ export const PollVotingPage: React.FC = () => {
             />
           </div>
         )}
+
+        {/* Edit password for anonymous respondents (#4) */}
+        {isScheduleMode && isVotingOpen && !currentUser && isAnonymousAllowed && (
+          <div className={`pt-3 border-t ${currentTheme.classes.divider}`}>
+            <label className={`block text-xs font-bold mb-1.5 flex items-center gap-1.5 ${currentTheme.classes.bodyText}`}>
+              <KeyRound className={`w-3.5 h-3.5 ${currentTheme.classes.primaryText}`} />
+              <span>{t('scheduleEx.editPasswordLabel')}</span>
+              <span className={`text-[11px] font-normal ${currentTheme.classes.mutedText}`}>({t('schedule.optional')})</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                type={showEditPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                value={editPassword}
+                maxLength={128}
+                onChange={e => setEditPassword(e.target.value)}
+                placeholder={t('scheduleEx.editPasswordPlaceholder')}
+                className="flex-1 min-w-0 text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-2xs"
+              />
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowEditPassword(v => !v)}>
+                {showEditPassword ? t('scheduleEx.hidePassword') : t('scheduleEx.showPassword')}
+              </Button>
+            </div>
+            <p className={`text-[11px] mt-1.5 leading-relaxed ${currentTheme.classes.mutedText}`}>
+              {userVote ? t('scheduleEx.editPasswordHintUpdate') : t('scheduleEx.editPasswordHintNew')}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Action Footer & User State (Sticky bar) */}
@@ -834,8 +1162,47 @@ export const PollVotingPage: React.FC = () => {
             poll={poll}
             round={currentRoundData}
             summary={scheduleSummary}
+            canEditVoter={canEditVoter}
+            onEditVoter={handleEditVoter}
           />
         </div>
+      )}
+
+      {/* Schedule response edit / password / decision / event info modals */}
+      {isScheduleMode && (
+        <>
+          <ScheduleResponseEditModal
+            isOpen={Boolean(editTarget)}
+            onClose={() => setEditTarget(null)}
+            options={currentRoundData.options}
+            vote={editTarget?.vote || null}
+            mode={editTarget?.mode || 'owner'}
+            onSave={handleEditSave}
+            onDelete={handleEditDelete}
+          />
+          <EditPasswordPromptModal
+            isOpen={Boolean(passwordTarget)}
+            onClose={() => setPasswordTarget(null)}
+            voterName={passwordTarget?.userDisplayName || ''}
+            onSubmit={handlePasswordSubmit}
+          />
+          {scheduleSummary && (
+            <DecideScheduleModal
+              isOpen={isDecideModalOpen}
+              onClose={() => setIsDecideModalOpen(false)}
+              poll={poll}
+              round={currentRoundData}
+              summary={scheduleSummary}
+              onConfirm={handleConfirmDecision}
+            />
+          )}
+          <EditEventInfoModal
+            isOpen={isEventInfoModalOpen}
+            onClose={() => setIsEventInfoModalOpen(false)}
+            poll={poll}
+            onSave={handleSaveEventInfo}
+          />
+        </>
       )}
 
       {/* Runoff Wizard Modal */}

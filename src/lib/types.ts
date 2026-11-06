@@ -1,8 +1,36 @@
+/** Structured date/time parsed from a schedule candidate (local time). */
+export interface ScheduleDateInfo {
+  date: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string; // HH:mm
+  allDay?: boolean;
+}
+
 export interface PollOption {
   id: string;
   text: string;
   description?: string;
   color?: string;
+  dateInfo?: ScheduleDateInfo; // Schedule mode only (best-effort parse of `text`)
+}
+
+/** Confirmed event date for a schedule poll. */
+export interface ScheduleDecision {
+  optionId: string;
+  label: string;
+  date: string; // YYYY-MM-DD
+  startTime?: string; // HH:mm
+  endTime?: string; // HH:mm
+  allDay: boolean;
+  decidedAt: string;
+}
+
+/** Event meta info for schedule polls. */
+export interface PollEventInfo {
+  location?: string;
+  locationUrl?: string;
+  fee?: string;
+  notes?: string;
 }
 
 export interface PollRound {
@@ -39,6 +67,11 @@ export interface Poll {
   totalRounds: number;
   pollType?: 'poll' | 'schedule'; // 'poll' (standard voting) | 'schedule' (chouseisan-style schedule adjustment)
   theme?: string; // Design theme ID (defaults to 'default')
+  decision?: ScheduleDecision | null; // Schedule mode: confirmed event date
+  location?: string;
+  locationUrl?: string;
+  fee?: string;
+  notes?: string;
 }
 
 export interface Vote {
@@ -49,6 +82,8 @@ export interface Vote {
   selectedOptionIds: string[];
   scheduleResponses?: Record<string, ScheduleChoice>; // optionId -> 'circle' | 'triangle' | 'cross'
   comment?: string; // Optional short comment from voter
+  isAnonymous?: boolean; // true = no-login vote protected by an edit key (voteSecrets)
+  editedByAdmin?: boolean;
   votedAt: string;
 }
 
@@ -68,6 +103,7 @@ export interface ScheduleVoterRow {
   userPhotoURL?: string;
   responses: Record<string, ScheduleChoice>;
   comment?: string;
+  isAnonymous?: boolean;
   votedAt: string;
 }
 

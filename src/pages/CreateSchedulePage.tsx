@@ -3,11 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from '../contexts/LanguageContext';
-import { createPoll } from '../lib/firestoreService';
+import { createPoll, normalizeEventInfo } from '../lib/firestoreService';
 import { Poll, PollRound } from '../lib/types';
 import {
   parseScheduleCandidateLines,
   candidateLinesToOptions,
+  sanitizeHttpUrl,
 } from '../lib/scheduleUtils';
 import { ScheduleQuickDatePicker } from '../components/schedule/ScheduleQuickDatePicker';
 import { ThemeSelector } from '../components/theme/ThemeSelector';
@@ -22,6 +23,7 @@ import {
   Globe,
   Vote as VoteIcon,
   Palette,
+  MapPin,
 } from 'lucide-react';
 
 export const CreateSchedulePage: React.FC = () => {
@@ -32,6 +34,13 @@ export const CreateSchedulePage: React.FC = () => {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+
+  // Event meta info (#6)
+  const [location, setLocation] = useState('');
+  const [locationUrl, setLocationUrl] = useState('');
+  const [fee, setFee] = useState('');
+  const [notes, setNotes] = useState('');
+  const isLocationUrlInvalid = locationUrl.trim() !== '' && !sanitizeHttpUrl(locationUrl);
 
   // Default candidate dates text
   const [candidateText, setCandidateText] = useState<string>(() => {
@@ -111,6 +120,11 @@ export const CreateSchedulePage: React.FC = () => {
       return;
     }
 
+    if (isLocationUrlInvalid) {
+      showToast('error', t('scheduleEx.invalidUrl'));
+      return;
+    }
+
     const startTimestamp = new Date(startDate).getTime();
     const endTimestamp = new Date(endDate).getTime();
     if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
@@ -126,7 +140,8 @@ export const CreateSchedulePage: React.FC = () => {
     try {
       setIsSubmitting(true);
 
-      const options = candidateLinesToOptions(parsedLines);
+      const options = candidateLinesToOptions(parsedLines, new Date(startDate));
+      const eventInfo = normalizeEventInfo({ location, locationUrl, fee, notes });
 
       const pollData: Omit<Poll, 'id' | 'createdAt' | 'updatedAt' | 'currentRound' | 'totalRounds'> = {
         title: title.trim(),
@@ -141,6 +156,10 @@ export const CreateSchedulePage: React.FC = () => {
         showVoterNames,
         pollType: 'schedule',
         theme,
+        location: eventInfo.location || undefined,
+        locationUrl: eventInfo.locationUrl || undefined,
+        fee: eventInfo.fee || undefined,
+        notes: eventInfo.notes || undefined,
       };
 
       const initialRound: Omit<PollRound, 'roundNumber'> = {
@@ -258,6 +277,73 @@ export const CreateSchedulePage: React.FC = () => {
               placeholder={t('schedule.eventDescPlaceholder')}
               className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
             />
+          </div>
+
+          {/* Event meta info: location / map URL / fee / notes */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+              <span>{t('scheduleEx.eventMetaTitle')}</span>
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  {t('scheduleEx.locationLabel')}
+                </label>
+                <input
+                  type="text"
+                  maxLength={200}
+                  value={location}
+                  onChange={e => setLocation(e.target.value)}
+                  placeholder={t('scheduleEx.locationPlaceholder')}
+                  className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  {t('scheduleEx.feeLabel')}
+                </label>
+                <input
+                  type="text"
+                  maxLength={100}
+                  value={fee}
+                  onChange={e => setFee(e.target.value)}
+                  placeholder={t('scheduleEx.feePlaceholder')}
+                  className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                {t('scheduleEx.locationUrlLabel')}
+              </label>
+              <input
+                type="url"
+                inputMode="url"
+                maxLength={1000}
+                value={locationUrl}
+                onChange={e => setLocationUrl(e.target.value)}
+                placeholder={t('scheduleEx.locationUrlPlaceholder')}
+                aria-invalid={isLocationUrlInvalid}
+                className={`w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm ${isLocationUrlInvalid ? 'border-rose-400 focus:ring-rose-400' : ''}`}
+              />
+              {isLocationUrlInvalid && (
+                <p className="text-[11px] text-rose-600 mt-1">{t('scheduleEx.invalidUrl')}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                {t('scheduleEx.notesLabel')}
+              </label>
+              <textarea
+                rows={2}
+                maxLength={1000}
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder={t('scheduleEx.notesPlaceholder')}
+                className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
+              />
+            </div>
           </div>
         </div>
 

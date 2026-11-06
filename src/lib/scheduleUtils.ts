@@ -1,4 +1,4 @@
-import { Poll, PollRound, PollOption, Vote, ScheduleChoice, ScheduleOptionSummary, ScheduleVoterRow, ScheduleResultSummary } from './types';
+import { Poll, PollRound, PollOption, Vote, ScheduleChoice, ScheduleOptionSummary, ScheduleVoterRow, ScheduleResultSummary, ScheduleDateInfo, ScheduleDecision } from './types';
 import { getOptionColor } from './runoffUtils';
 
 export const SCHEDULE_SYMBOLS: Record<ScheduleChoice, { symbolJa: string; symbolEn: string; labelJa: string; labelEn: string; colorClass: string; bgClass: string; borderClass: string; textClass: string }> = {
@@ -56,13 +56,162 @@ export function parseScheduleCandidateLines(rawText: string): string[] {
 
 /**
  * Converts parsed date strings into PollOption array.
+ * Each option gets a best-effort structured `dateInfo` (used for calendar export).
  */
-export function candidateLinesToOptions(lines: string[]): PollOption[] {
-  return lines.map((line, idx) => ({
-    id: `opt_sched_${idx + 1}_${Math.random().toString(36).substring(2, 7)}`,
-    text: line,
-    color: getOptionColor(idx),
-  }));
+export function candidateLinesToOptions(lines: string[], refDate: Date = new Date()): PollOption[] {
+  return lines.map((line, idx) => {
+    const option: PollOption = {
+      id: `opt_sched_${idx + 1}_${Math.random().toString(36).substring(2, 7)}`,
+      text: line,
+      color: getOptionColor(idx),
+    };
+    const info = parseCandidateDateInfo(line, refDate);
+    if (info) option.dateInfo = info;
+    return option;
+  });
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+function toYmd(y: number, m: number, d: number): string {
+  return `${y}-${pad2(m)}-${pad2(d)}`;
+}
+
+function isValidYmd(y: number, m: number, d: number): boolean {
+  if (m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+}
+
+const TIME_RE = /(\d{1,2})(?::(\d{2})|時(?:(\d{1,2})分?)?)/;
+const RANGE_SEP_RE = /^\s*[〜~～\-–—ー]\s*/;
+
+function parseTimeAt(text: string): { time: string; rest: string } | null {
+  const m = text.match(TIME_RE);
+  if (!m || m.index === undefined) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2] ?? m[3] ?? 0);
+  if (h > 24 || min > 59) return null;
+  return { time: `${pad2(h)}:${pad2(min)}`, rest: text.slice(m.index + m[0].length) };
+}
+
+/**
+ * Best-effort parser for candidate lines such as
+ *   "8/25(月) 19:00〜", "8/25(月) 19:00〜21:00", "2026/8/25 19時〜", "8月25日 終日", "2026-08-25".
+ * When the year is omitted, the nearest date on or after `refDate` is used.
+ * Lines without a time are treated as all-day. Returns null if no date is found.
+ */
+export function parseCandidateDateInfo(text: string, refDate: Date = new Date()): ScheduleDateInfo | null {
+  if (!text) return null;
+  const dateMatch = text.match(/(?:(\d{4})\s*[\/\-年.]\s*)?(\d{1,2})\s*[\/\-月.]\s*(\d{1,2})\s*日?/);
+  if (!dateMatch || dateMatch.index === undefined) return null;
+
+  const month = Number(dateMatch[2]);
+  const day = Number(dateMatch[3]);
+  let year: number;
+  if (dateMatch[1]) {
+    year = Number(dateMatch[1]);
+    if (!isValidYmd(year, month, day)) return null;
+  } else {
+    year = refDate.getFullYear();
+    const refDay = new Date(refDate.getFullYear(), refDate.getMonth(), refDate.getDate()).getTime();
+    // Try this year, then next years (handles 2/29 too)
+    let found = false;
+    for (let i = 0; i < 8; i++) {
+      const y = year + i;
+      if (isValidYmd(y, month, day) && new Date(y, month - 1, day).getTime() >= refDay) {
+        year = y;
+        found = true;
+        break;
+      }
+    }
+    if (!found) return null;
+  }
+
+  const date = toYmd(year, month, day);
+  const rest = text.slice(dateMatch.index + dateMatch[0].length);
+
+  if (/終日|all[\s-]?day/i.test(rest)) {
+    return { date, allDay: true };
+  }
+
+  const start = parseTimeAt(rest);
+  if (!start) {
+    return { date, allDay: true };
+  }
+
+  const info: ScheduleDateInfo = { date, startTime: start.time, allDay: false };
+  const sep = start.rest.match(RANGE_SEP_RE);
+  if (sep) {
+    const end = parseTimeAt(start.rest.slice(sep[0].length));
+    if (end && start.rest.slice(sep[0].length).search(TIME_RE) === 0) {
+      info.endTime = end.time;
+    }
+  }
+  return info;
+}
+
+/**
+ * Formats a decision / dateInfo into a human-readable string.
+ * ja: "2026/8/25(火) 19:00〜21:00", en: "Tue, Aug 25, 2026 19:00–21:00"
+ */
+export function formatDateInfo(
+  info: Pick<ScheduleDateInfo, 'date' | 'startTime' | 'endTime' | 'allDay'>,
+  language: 'ja' | 'en' = 'ja'
+): string {
+  const [y, m, d] = info.date.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  let datePart: string;
+  if (language === 'en') {
+    datePart = dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  } else {
+    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+    datePart = `${y}/${m}/${d}(${dayNames[dt.getDay()]})`;
+  }
+  if (info.allDay || !info.startTime) {
+    return `${datePart} ${language === 'en' ? 'All day' : '終日'}`;
+  }
+  const sep = language === 'en' ? '–' : '〜';
+  return `${datePart} ${info.startTime}${sep}${info.endTime || ''}`;
+}
+
+/**
+ * Normalizes a user-entered URL. Only http(s) URLs are accepted (blocks `javascript:` etc.).
+ * A URL without a scheme gets `https://` prepended. Returns '' when invalid.
+ */
+export function sanitizeHttpUrl(raw: string | undefined | null): string {
+  if (!raw) return '';
+  let value = raw.trim();
+  if (!value) return '';
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) {
+    value = 'https://' + value;
+  }
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+    if (!url.hostname || !url.hostname.includes('.')) return '';
+    return url.href;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Builds the default decision (prefilled form values) for an option.
+ */
+export function buildDecisionFromOption(
+  option: PollOption,
+  refDate: Date = new Date()
+): Omit<ScheduleDecision, 'decidedAt'> {
+  const info = option.dateInfo || parseCandidateDateInfo(option.text, refDate);
+  return {
+    optionId: option.id,
+    label: option.text,
+    date: info?.date || toYmd(refDate.getFullYear(), refDate.getMonth() + 1, refDate.getDate()),
+    startTime: info?.startTime,
+    endTime: info?.endTime,
+    allDay: info ? Boolean(info.allDay || !info.startTime) : true,
+  };
 }
 
 /**
@@ -104,6 +253,7 @@ export function calculateScheduleResults(round: PollRound, votes: Vote[]): Sched
       userPhotoURL: v.userPhotoURL,
       responses,
       comment: v.comment,
+      isAnonymous: v.isAnonymous,
       votedAt: v.votedAt,
     };
   });
@@ -214,9 +364,21 @@ export function formatScheduleExportText(
 
   const lines: string[] = [];
   lines.push(isEn ? `[Schedule Results] ${poll.title}` : `【日程調整結果】${poll.title}`);
+  if (poll.decision) {
+    lines.push(
+      isEn
+        ? `✅ Confirmed: ${formatDateInfo(poll.decision, language)} (${poll.decision.label})`
+        : `✅ 開催決定: ${formatDateInfo(poll.decision, language)}（${poll.decision.label}）`
+    );
+  }
   if (poll.description) {
     lines.push(`${poll.description}`);
   }
+  if (poll.location) lines.push(`${isEn ? 'Location' : '場所'}: ${poll.location}`);
+  const mapUrl = sanitizeHttpUrl(poll.locationUrl);
+  if (mapUrl) lines.push(`${isEn ? 'Map / URL' : '地図・URL'}: ${mapUrl}`);
+  if (poll.fee) lines.push(`${isEn ? 'Fee' : '会費'}: ${poll.fee}`);
+  if (poll.notes) lines.push(`${isEn ? 'Notes' : '備考'}: ${poll.notes}`);
   lines.push(isEn ? `Total Respondents: ${summary.totalVoters}` : `回答者数: ${summary.totalVoters}名`);
   lines.push('----------------------------');
 
