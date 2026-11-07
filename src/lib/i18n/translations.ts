@@ -98,7 +98,6 @@ export const translations = {
       createPollCardBadge: 'アンケート・意思決定',
     },
     create: {
-      badge: '新規投票フォーム作成',
       title: '新しい投票を作成',
       subtitle: '選択肢（最大20件）、投票期間、上限選択数を設定して共有リンクを発行します。',
       loginRequiredTitle: 'Googleログインが必要です',
@@ -410,6 +409,7 @@ export const translations = {
       createTitle: '新しい日程調整を作成',
       createSubtitle: 'イベント名と候補日程を入力して出欠表を作成・共有します。回答者はログイン不要で参加可能です。',
       tabStandardPoll: '通常の投票',
+      tabPoll: '投票',
       tabScheduleAdjust: '日程調整',
       createHeaderBtn: '日程調整',
       homeCreateBtn: '日程調整を作成',
@@ -792,7 +792,6 @@ export const translations = {
       createPollCardBadge: 'Survey & Decision Making',
     },
     create: {
-      badge: 'Create New Poll Form',
       title: 'Create a New Poll',
       subtitle: 'Set up options (up to 20), voting period, and max choices to generate a shareable link.',
       loginRequiredTitle: 'Google Sign-in Required',
@@ -1104,6 +1103,7 @@ export const translations = {
       createTitle: 'Create Schedule Adjustment',
       createSubtitle: 'Set up candidate dates and event details to share an attendance sheet. Participants can respond without logging in.',
       tabStandardPoll: 'Standard Poll',
+      tabPoll: 'Poll',
       tabScheduleAdjust: 'Schedule Adjustment',
       createHeaderBtn: 'Schedule',
       homeCreateBtn: 'Create Schedule',

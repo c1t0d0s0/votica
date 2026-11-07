@@ -199,10 +199,10 @@ export const CreateSchedulePage: React.FC = () => {
       <div className="flex items-center gap-2 mb-5 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
         <Link
           to="/create"
-          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+          className="flex-1 sm:flex-initial sm:min-w-[129px] flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
         >
           <VoteIcon className="w-4 h-4" />
-          <span>{t('schedule.tabStandardPoll')}</span>
+          <span>{t('schedule.tabPoll')}</span>
         </Link>
         <span className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-white text-indigo-600 shadow-xs">
           <Calendar className="w-4 h-4" />
