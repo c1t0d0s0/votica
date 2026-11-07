@@ -46,7 +46,7 @@ export const HomePage: React.FC = () => {
         {/* Button 1: Create Schedule Adjustment */}
         <Link
           to="/create-schedule"
-          className="group relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-blue-800 text-white p-3.5 sm:p-7 md:p-8 rounded-2xl sm:rounded-3xl shadow-lg shadow-indigo-600/25 hover:shadow-2xl hover:shadow-indigo-600/40 hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between cursor-pointer border border-indigo-400/30"
+          className="keep-palette group relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-blue-800 text-white p-3.5 sm:p-7 md:p-8 rounded-2xl sm:rounded-3xl shadow-lg shadow-indigo-600/25 hover:shadow-2xl hover:shadow-indigo-600/40 hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between cursor-pointer border border-indigo-400/30"
         >
           {/* Background Decorative Watermark Icon */}
           <div className="absolute -right-2 -bottom-2 sm:-right-4 sm:-bottom-4 text-white/10 pointer-events-none group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
@@ -94,7 +94,7 @@ export const HomePage: React.FC = () => {
         {/* Button 2: Create Standard Poll */}
         <Link
           to="/create"
-          className="group relative overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-800 text-white p-3.5 sm:p-7 md:p-8 rounded-2xl sm:rounded-3xl shadow-lg shadow-pink-600/25 hover:shadow-2xl hover:shadow-pink-600/40 hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between cursor-pointer border border-pink-400/30"
+          className="keep-palette group relative overflow-hidden bg-gradient-to-br from-rose-600 via-pink-600 to-purple-800 text-white p-3.5 sm:p-7 md:p-8 rounded-2xl sm:rounded-3xl shadow-lg shadow-pink-600/25 hover:shadow-2xl hover:shadow-pink-600/40 hover:-translate-y-1 active:scale-[0.98] transition-all duration-200 flex flex-col justify-between cursor-pointer border border-pink-400/30"
         >
           {/* Background Decorative Watermark Icon */}
           <div className="absolute -right-2 -bottom-2 sm:-right-4 sm:-bottom-4 text-white/10 pointer-events-none group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">

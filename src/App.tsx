@@ -3,6 +3,7 @@ import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { ColorModeProvider } from './contexts/ColorModeContext';
 import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import { HomePage } from './pages/HomePage';
@@ -15,6 +16,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 export const App: React.FC = () => {
   return (
     <Router>
+      <ColorModeProvider>
       <LanguageProvider>
         <AuthProvider>
           <ToastProvider>
@@ -35,6 +37,7 @@ export const App: React.FC = () => {
         </ToastProvider>
       </AuthProvider>
     </LanguageProvider>
+      </ColorModeProvider>
   </Router>
 );
 };

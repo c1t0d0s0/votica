@@ -34,12 +34,12 @@ export const Button: React.FC<ButtonProps> = ({
 
   const variantStyles = {
     primary:
-      'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-md shadow-indigo-200 focus:ring-indigo-500',
-    secondary: 'bg-slate-800 hover:bg-slate-700 text-white shadow-sm focus:ring-slate-700',
+      'keep-palette bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white shadow-md shadow-indigo-200 focus:ring-indigo-500',
+    secondary: 'keep-palette bg-slate-800 hover:bg-slate-700 text-white shadow-sm focus:ring-slate-700',
     outline: 'border border-slate-300 hover:bg-slate-100 text-slate-700 focus:ring-slate-400 bg-white',
-    danger: 'bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-200 focus:ring-rose-500',
+    danger: 'keep-palette bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-200 focus:ring-rose-500',
     ghost: 'text-slate-600 hover:bg-slate-100 focus:ring-slate-300',
-    success: 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-200 focus:ring-emerald-500',
+    success: 'keep-palette bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-200 focus:ring-emerald-500',
   };
 
   return (

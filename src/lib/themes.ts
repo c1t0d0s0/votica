@@ -764,3 +764,71 @@ export function getThemesByCategory(category: ThemeCategory): ThemeDefinition[] 
   }
   return getAllThemes().filter(t => t.category === category);
 }
+
+/* =========================================================================
+   Dark design themes on pages: the page wrapper gets `.palette-dark`, which mirrors
+   the Tailwind palette (see src/dark-palette.css) so shared components (stat cards,
+   charts, share card, tables...) become dark. The theme's own palette classes are
+   mirrored here too, so they cancel out and the theme looks exactly as designed.
+   ========================================================================= */
+
+// Keep in sync with scripts/gen-dark-palette.mjs
+const NEUTRAL_FAMILIES = new Set(['slate', 'gray', 'zinc', 'neutral', 'stone', 'mauve', 'mist', 'olive', 'taupe']);
+const MIRROR_NEUTRAL: Record<string, string> = {
+  '50': '950', '100': '900', '200': '800', '300': '700', '400': '600',
+  '600': '400', '700': '300', '800': '200', '900': '100', '950': '50',
+};
+const MIRROR_CHROMA: Record<string, string> = {
+  '50': '950', '100': '900', '200': '800', '300': '700',
+  '700': '300', '800': '200', '900': '100', '950': '50',
+};
+const COLOR_TOKEN_RE =
+  /^((?:[a-z0-9-]+:)*)((?:bg|text|border(?:-[trblxy])?|from|via|to|ring|ring-offset|shadow|divide|outline|fill|stroke|decoration|accent|caret)-)([a-z]+)-(\d{2,3})((?:\/\d+)?)$/;
+
+/** Mirrors palette shades in a class string (e.g. "bg-slate-900 hover:text-cyan-300" -> "bg-slate-100 hover:text-cyan-700"). */
+export function mirrorColorClasses(classes: string): string {
+  return classes
+    .split(/\s+/)
+    .map(token => {
+      const m = token.match(COLOR_TOKEN_RE);
+      if (!m) return token;
+      const [, variants, utility, family, shade, opacity] = m;
+      const map = NEUTRAL_FAMILIES.has(family) ? MIRROR_NEUTRAL : MIRROR_CHROMA;
+      const mirrored = map[shade];
+      return mirrored ? `${variants}${utility}${family}-${mirrored}${opacity}` : token;
+    })
+    .join(' ');
+}
+
+export interface DisplayTheme extends ThemeDefinition {
+  /** Class to put on the page wrapper ('' for light themes) */
+  scopeClass: string;
+  /** Inline style for the wrapper (surface color for shared white cards) */
+  scopeStyle: Record<string, string>;
+}
+
+/** First arbitrary hex background in a class string, e.g. "bg-[#0d1527]" -> "#0d1527". */
+function extractHexBackground(classes: string): string | null {
+  const m = classes.match(/(?:^|\s)bg-\[(#[0-9a-fA-F]{3,8})\](?:\/\d+)?(?:\s|$)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Theme to render a poll page with. Dark themes are converted for the `.palette-dark` scope.
+ */
+export function getDisplayTheme(themeId?: string): DisplayTheme {
+  const theme = getTheme(themeId);
+  if (!theme.isDark) {
+    return { ...theme, scopeClass: '', scopeStyle: {} };
+  }
+  const classes = Object.fromEntries(
+    Object.entries(theme.classes).map(([key, value]) => [key, mirrorColorClasses(value)])
+  ) as unknown as ThemeClasses;
+  const surface = extractHexBackground(theme.classes.cardBg);
+  return {
+    ...theme,
+    classes,
+    scopeClass: 'palette-dark',
+    scopeStyle: surface ? { '--surface': surface } : {},
+  };
+}

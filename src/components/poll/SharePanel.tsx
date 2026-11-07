@@ -133,7 +133,7 @@ export const SharePanel: React.FC<SharePanelProps> = ({
   return (
     <section
       aria-live="polite"
-      className="relative rounded-3xl border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 via-white to-pink-50 p-5 sm:p-7 shadow-lg space-y-4"
+      className="relative rounded-3xl border-2 border-indigo-300 bg-gradient-to-br from-indigo-50 to-pink-50 p-5 sm:p-7 shadow-lg space-y-4"
     >
       {onDismiss && (
         <button

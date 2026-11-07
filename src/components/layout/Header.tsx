@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from '../../contexts/LanguageContext';
+import { useColorMode } from '../../contexts/ColorModeContext';
 import { Button } from '../common/Button';
 import { FirebaseConfigModal } from '../common/FirebaseConfigModal';
 import {
@@ -14,11 +15,22 @@ import {
   ShieldCheck,
   Globe,
   Calendar,
+  Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
   const { currentUser, isFirebaseConfigured, signInWithGoogle, signInAsDemoUser, logout } = useAuth();
   const { t, language, toggleLanguage } = useTranslation();
+  const { mode: colorMode, cycleMode } = useColorMode();
+  const colorModeLabel =
+    colorMode === 'light'
+      ? t('header.colorModeLight')
+      : colorMode === 'dark'
+      ? t('header.colorModeDark')
+      : t('header.colorModeSystem');
+  const ColorModeIcon = colorMode === 'light' ? Sun : colorMode === 'dark' ? Moon : Monitor;
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -52,6 +64,18 @@ export const Header: React.FC = () => {
 
           {/* Right Navigation */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Color mode (light / dark / system) */}
+            <button
+              type="button"
+              onClick={cycleMode}
+              title={t('header.colorModeToggle', { mode: colorModeLabel })}
+              aria-label={t('header.colorModeToggle', { mode: colorModeLabel })}
+              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors shadow-xs"
+            >
+              <ColorModeIcon className="w-4 h-4 text-indigo-600" />
+              <span className="hidden lg:inline">{colorModeLabel}</span>
+            </button>
+
             {/* Language Switcher */}
             <button
               onClick={toggleLanguage}

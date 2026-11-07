@@ -39,7 +39,7 @@ export const WinnerBadge: React.FC<WinnerBadgeProps> = ({
   if (summary.hasTieForFirst && summary.tiedFirstOptions.length > 1) {
     return (
       <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border-2 border-amber-300 shadow-md">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-stretch justify-between gap-4">
           <div className="flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-200">
               <AlertTriangle className="w-5 h-5" />

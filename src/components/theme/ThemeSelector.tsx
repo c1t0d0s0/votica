@@ -88,7 +88,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                 <div className="flex items-center gap-1.5">
                   <span className="text-base">{theme.emoji}</span>
                   {theme.isDark && (
-                    <span className="p-0.5 rounded-full bg-slate-800 text-slate-200" title="ダークテーマ">
+                    <span className="keep-palette p-0.5 rounded-full bg-slate-800 text-slate-200" title="ダークテーマ">
                       <Moon className="w-2.5 h-2.5" />
                     </span>
                   )}

@@ -27,15 +27,6 @@ export const CreateModeTabs: React.FC<{ active: 'poll' | 'schedule' }> = ({ acti
 
   return (
     <div className="flex items-center gap-2 mb-5 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
-      {active === 'poll' ? (
-        <span className={activeCls('text-rose-600')} aria-current="page">
-          {pollContent}
-        </span>
-      ) : (
-        <Link to="/create" className={idleCls}>
-          {pollContent}
-        </Link>
-      )}
       {active === 'schedule' ? (
         <span className={activeCls('text-indigo-600')} aria-current="page">
           {scheduleContent}
@@ -43,6 +34,15 @@ export const CreateModeTabs: React.FC<{ active: 'poll' | 'schedule' }> = ({ acti
       ) : (
         <Link to="/create-schedule" className={idleCls}>
           {scheduleContent}
+        </Link>
+      )}
+      {active === 'poll' ? (
+        <span className={activeCls('text-rose-600')} aria-current="page">
+          {pollContent}
+        </span>
+      ) : (
+        <Link to="/create" className={idleCls}>
+          {pollContent}
         </Link>
       )}
     </div>

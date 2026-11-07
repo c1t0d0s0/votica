@@ -214,7 +214,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                   <tr
                     key={optSummary.option.id}
                     className={`hover:bg-slate-50/60 transition-colors ${
-                      isDecided ? 'bg-emerald-50/60' : optSummary.isBest ? 'bg-amber-50/40' : ''
+                      isDecided ? 'bg-emerald-50/60' : optSummary.isBest ? 'bg-amber-50/40 dark:bg-amber-400/5' : ''
                     }`}
                   >
                     {/* Date label */}
@@ -223,7 +223,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                         isDecided
                           ? 'bg-emerald-50/95 backdrop-blur-xs'
                           : optSummary.isBest
-                          ? 'bg-amber-50/90 backdrop-blur-xs'
+                          ? 'bg-amber-50/90 dark:bg-[#1f1b16]/95 backdrop-blur-xs'
                           : 'bg-white/95 backdrop-blur-xs'
                       }`}
                     >

@@ -42,6 +42,10 @@ export const translations = {
       notFoundMessage: 'お探しのページは見つかりませんでした。',
     },
     header: {
+      colorModeLight: 'ライト',
+      colorModeDark: 'ダーク',
+      colorModeSystem: 'システム設定に合わせる',
+      colorModeToggle: '表示テーマ: {{mode}}（クリックで切り替え）',
       firebaseConnected: 'Firebase接続中 (設定を確認)',
       demoMode: 'ローカルデモ動作中 (Firebase設定)',
       googleSignedIn: 'Googleログイン済み',
@@ -748,6 +752,10 @@ export const translations = {
       notFoundMessage: 'The page you are looking for could not be found.',
     },
     header: {
+      colorModeLight: 'Light',
+      colorModeDark: 'Dark',
+      colorModeSystem: 'Match system',
+      colorModeToggle: 'Theme: {{mode}} (click to switch)',
       firebaseConnected: 'Connected to Firebase (View settings)',
       demoMode: 'Running in Local Demo (Firebase settings)',
       googleSignedIn: 'Signed in with Google',

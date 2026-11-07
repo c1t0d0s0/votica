@@ -31,7 +31,7 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
     }
     if (rank === 3) {
       return (
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-amber-700/60 text-white font-black text-xs shadow-sm">
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-xl keep-palette bg-amber-700/60 text-white font-black text-xs shadow-sm">
           🥉 3
         </span>
       );

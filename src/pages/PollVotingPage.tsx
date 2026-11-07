@@ -48,7 +48,7 @@ import {
   countCircles,
   getLockedCircleOptionIds,
 } from '../lib/scheduleUtils';
-import { getTheme } from '../lib/themes';
+import { getDisplayTheme } from '../lib/themes';
 import { VoteOptionCard } from '../components/poll/VoteOptionCard';
 import { ScheduleVotingTable } from '../components/schedule/ScheduleVotingTable';
 import { ScheduleResultMatrix } from '../components/schedule/ScheduleResultMatrix';
@@ -206,7 +206,7 @@ export const PollVotingPage: React.FC = () => {
   }, [pollId, viewRoundNumber]);
 
   const isScheduleMode = poll?.pollType === 'schedule';
-  const currentTheme = getTheme(poll?.theme);
+  const currentTheme = getDisplayTheme(poll?.theme);
 
   // Compute summary on round or votes update
   useEffect(() => {
@@ -767,7 +767,9 @@ export const PollVotingPage: React.FC = () => {
   };
 
   return (
-    <div className={`px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
+    <div className={`px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg} ${currentTheme.scopeClass}`}
+      style={currentTheme.scopeStyle as React.CSSProperties}
+    >
       <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto space-y-6">
         {/* Top Navigation & Round Selector */}
         <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl border shadow-sm ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>

@@ -12,6 +12,19 @@
     <meta name="apple-mobile-web-app-title" content="Votica" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Votica - 決選投票対応 汎用投票プラットフォーム</title>
+    <script>
+      // Apply the saved color mode before first paint (avoids a light flash in dark mode)
+      (function () {
+        try {
+          var m = localStorage.getItem('votica_color_mode') || 'system';
+          var dark = m === 'dark' || (m === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) {
+            document.documentElement.classList.add('dark');
+            document.documentElement.style.colorScheme = 'dark';
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta name="description" content="多人数での決選投票・同率1位自動再投票に対応した、手軽で安全なGoogle認証投票Webサービス" />
   </head>
   <body class="min-h-screen bg-slate-50 text-slate-900 antialiased">

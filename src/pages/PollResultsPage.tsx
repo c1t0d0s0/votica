@@ -16,7 +16,7 @@ import {
 import { Poll, PollRound, Vote, RoundResultSummary, ScheduleResultSummary } from '../lib/types';
 import { calculateRoundResults } from '../lib/runoffUtils';
 import { calculateScheduleResults } from '../lib/scheduleUtils';
-import { getTheme } from '../lib/themes';
+import { getDisplayTheme } from '../lib/themes';
 import { ResultBarChart } from '../components/results/ResultBarChart';
 import { WinnerBadge } from '../components/results/WinnerBadge';
 import { ScheduleResultMatrix } from '../components/schedule/ScheduleResultMatrix';
@@ -104,7 +104,7 @@ export const PollResultsPage: React.FC = () => {
   }, [pollId, selectedRoundNumber]);
 
   const isScheduleMode = poll?.pollType === 'schedule';
-  const currentTheme = getTheme(poll?.theme);
+  const currentTheme = getDisplayTheme(poll?.theme);
 
   // Compute summary on round or votes update
   useEffect(() => {
@@ -250,7 +250,9 @@ export const PollResultsPage: React.FC = () => {
   };
 
   return (
-    <div className={`px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
+    <div className={`px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg} ${currentTheme.scopeClass}`}
+      style={currentTheme.scopeStyle as React.CSSProperties}
+    >
       <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto space-y-6">
         {/* Top Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -296,7 +298,7 @@ export const PollResultsPage: React.FC = () => {
 
         {/* Admin Control Panel Banner (Visible only to Creator) */}
         {isAdmin && (
-          <div className="bg-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-800 space-y-4">
+          <div className="keep-palette bg-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-800 space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-indigo-400" />
