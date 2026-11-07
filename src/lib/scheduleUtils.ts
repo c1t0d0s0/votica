@@ -419,7 +419,8 @@ export function formatQuickDate(d: Date, timeStr = '19:00〜'): string {
   const month = d.getMonth() + 1;
   const date = d.getDate();
   const dayOfWeek = dayNames[d.getDay()];
-  return `${month}/${date}(${dayOfWeek}) ${timeStr}`;
+  const time = (timeStr || '').trim();
+  return time ? `${month}/${date}(${dayOfWeek}) ${time}` : `${month}/${date}(${dayOfWeek})`;
 }
 
 /**

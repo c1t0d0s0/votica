@@ -104,12 +104,12 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
                   {capacity ? (
                     <div className="flex items-center gap-1.5 mt-1">
                       {circleCount !== undefined && (
-                        <span className="text-[11px] font-bold text-slate-500">
+                        <span className="text-2xs font-bold text-slate-500">
                           {t('scheduleEx.capacityCount', { count: circleCount, capacity })}
                         </span>
                       )}
                       {isCircleLocked && (
-                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-600 text-white">
+                        <span className="text-2xs font-black px-1.5 py-0.5 rounded-md bg-rose-600 text-white">
                           {t('scheduleEx.fullBadge')}
                         </span>
                       )}
@@ -141,7 +141,7 @@ export const ScheduleVotingTable: React.FC<ScheduleVotingTableProps> = ({
                       <div className="text-base sm:text-lg font-bold leading-none">
                         {getScheduleSymbol(c, language)}
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-medium leading-none">
+                      <span className="text-2xs sm:text-2xs font-medium leading-none">
                         {language === 'ja' ? meta.labelJa.split(' ')[0] : meta.labelEn}
                       </span>
                     </button>

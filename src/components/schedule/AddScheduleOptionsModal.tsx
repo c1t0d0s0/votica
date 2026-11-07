@@ -1,14 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PollOption } from '../../lib/types';
-import {
-  MAX_SCHEDULE_CANDIDATES,
-  classifyNewCandidateLines,
-  parseScheduleCandidateLines,
-} from '../../lib/scheduleUtils';
+import { MAX_SCHEDULE_CANDIDATES } from '../../lib/scheduleUtils';
+import { CandidateDraft, linesFromDrafts, sortDrafts } from '../../lib/candidateDrafts';
 import { useTranslation } from '../../contexts/LanguageContext';
 import { Modal } from '../common/Modal';
 import { Button } from '../common/Button';
-import { ScheduleQuickDatePicker } from './ScheduleQuickDatePicker';
+import { ScheduleCandidatePicker } from './ScheduleCandidatePicker';
 import { CalendarPlus } from 'lucide-react';
 
 interface AddScheduleOptionsModalProps {
@@ -26,29 +23,20 @@ export const AddScheduleOptionsModal: React.FC<AddScheduleOptionsModalProps> = (
   onSubmit,
 }) => {
   const { t } = useTranslation();
-  const [text, setText] = useState('');
+  const [drafts, setDrafts] = useState<CandidateDraft[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (isOpen) setText('');
+    if (isOpen) setDrafts([]);
   }, [isOpen]);
 
-  const { newLines, duplicateLines } = useMemo(
-    () => classifyNewCandidateLines(existingOptions, parseScheduleCandidateLines(text)),
-    [existingOptions, text]
-  );
   const remaining = Math.max(0, MAX_SCHEDULE_CANDIDATES - existingOptions.length);
-  const overLimit = newLines.length > remaining;
-
-  const handleAddFromPicker = (dates: string[]) => {
-    setText(prev => (prev.trim() ? `${prev.trim()}\n${dates.join('\n')}` : dates.join('\n')));
-  };
 
   const handleSubmit = async () => {
-    if (newLines.length === 0 || overLimit) return;
+    if (drafts.length === 0) return;
     try {
       setIsSaving(true);
-      await onSubmit(newLines);
+      await onSubmit(linesFromDrafts(sortDrafts(drafts)));
     } finally {
       setIsSaving(false);
     }
@@ -63,42 +51,14 @@ export const AddScheduleOptionsModal: React.FC<AddScheduleOptionsModalProps> = (
       maxWidth="2xl"
     >
       <div className="space-y-4">
-        <ScheduleQuickDatePicker onAddDates={handleAddFromPicker} />
-
-        <div>
-          <label className="block text-xs font-bold text-slate-700 mb-1.5">
-            {t('schedule.candidateTextareaLabel')}
-          </label>
-          <textarea
-            rows={5}
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder={t('schedule.candidateTextareaPlaceholder')}
-            className="w-full font-mono text-xs sm:text-sm px-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"
-          />
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 text-xs space-y-1.5">
-          <p className="font-bold text-slate-800">
-            {t('scheduleEx.addOptionsPreview', { count: newLines.length })}
-            <span className="ml-2 font-normal text-slate-500">
-              {t('scheduleEx.addOptionsRemaining', {
-                current: existingOptions.length,
-                max: MAX_SCHEDULE_CANDIDATES,
-              })}
-            </span>
-          </p>
-          {duplicateLines.length > 0 && (
-            <p className="text-amber-700">
-              {t('scheduleEx.addOptionsDuplicates', { count: duplicateLines.length })}: {duplicateLines.join(' / ')}
-            </p>
+        <p className="text-sm text-slate-600">
+          {t('scheduleEx.addOptionsRemaining', { current: existingOptions.length, max: MAX_SCHEDULE_CANDIDATES })}
+          {remaining === 0 && (
+            <span className="ml-2 font-semibold text-rose-600">{t('scheduleEx.addOptionsOverLimit', { remaining })}</span>
           )}
-          {overLimit && (
-            <p className="font-semibold text-rose-600">
-              {t('scheduleEx.addOptionsOverLimit', { remaining })}
-            </p>
-          )}
-        </div>
+        </p>
+
+        <ScheduleCandidatePicker value={drafts} onChange={setDrafts} existingOptions={existingOptions} compact />
 
         <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
@@ -108,10 +68,10 @@ export const AddScheduleOptionsModal: React.FC<AddScheduleOptionsModalProps> = (
             variant="primary"
             onClick={handleSubmit}
             isLoading={isSaving}
-            disabled={newLines.length === 0 || overLimit}
+            disabled={drafts.length === 0}
             leftIcon={<CalendarPlus className="w-4 h-4" />}
           >
-            {t('scheduleEx.addOptionsSubmit', { count: newLines.length })}
+            {t('scheduleEx.addOptionsSubmit', { count: drafts.length })}
           </Button>
         </div>
       </div>

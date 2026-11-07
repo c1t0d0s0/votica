@@ -250,8 +250,8 @@ export const PollResultsPage: React.FC = () => {
   };
 
   return (
-    <div className={`-mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className={`px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
+      <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto space-y-6">
         {/* Top Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
@@ -264,7 +264,7 @@ export const PollResultsPage: React.FC = () => {
             </Link>
 
             {poll.status === 'closed' && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+              <span className="inline-flex items-center gap-1 text-2xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
                 <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                 {t('voting.pollConcluded', { total: poll.totalRounds })}
               </span>
@@ -420,16 +420,16 @@ export const PollResultsPage: React.FC = () => {
               </span>
               <span className={`text-xs ${currentTheme.classes.mutedText}`}>{t('results.realtimeUpdate')}</span>
               {isScheduleMode ? (
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                <span className={`text-2xs font-bold px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
                   <Calendar className="w-3 h-3 inline mr-1" />
                   {t('schedule.badge')}
                 </span>
               ) : poll.showVoterNames ? (
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                <span className={`text-2xs font-bold px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
                   {t('results.namedVotingBadge')}
                 </span>
               ) : (
-                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+                <span className={`text-2xs font-medium px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
                   {t('results.anonymousVotingBadge')}
                 </span>
               )}
@@ -454,9 +454,10 @@ export const PollResultsPage: React.FC = () => {
               />
             )
           ) : (
-            /* Standard Voting Results */
-            <>
+            /* Standard Voting Results: chart (left) + winner summary (right, sticky) on wide screens */
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
               {/* Tie Detection / Winner Celebratory Banner */}
+              <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-20">
               {summary && (
                 <WinnerBadge
                   summary={summary}
@@ -470,9 +471,13 @@ export const PollResultsPage: React.FC = () => {
                 />
               )}
 
+              </div>
+
               {/* Results Bar Chart */}
-              {summary && <ResultBarChart summary={summary} showVoterNames={poll.showVoterNames} />}
-            </>
+              <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+                {summary && <ResultBarChart summary={summary} showVoterNames={poll.showVoterNames} />}
+              </div>
+            </div>
           )}
         </div>
 

@@ -232,7 +232,7 @@ export const OssLicensesModal: React.FC<OssLicensesModalProps> = ({ isOpen, onCl
                           {pkg.license}
                         </span>
                         {pkg.isDev && (
-                          <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">
+                          <span className="text-2xs uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">
                             dev
                           </span>
                         )}

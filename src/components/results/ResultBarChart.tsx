@@ -50,15 +50,15 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
       {/* Overview Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center">
-          <span className="text-[11px] font-semibold text-slate-500 block">{t('chart.totalVoters')}</span>
+          <span className="text-2xs font-semibold text-slate-500 block">{t('chart.totalVoters')}</span>
           <span className="text-xl font-black text-indigo-900">{summary.totalVoters} {t('chart.votersUnit')}</span>
         </div>
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center">
-          <span className="text-[11px] font-semibold text-slate-500 block">{t('chart.totalVotes')}</span>
+          <span className="text-2xs font-semibold text-slate-500 block">{t('chart.totalVotes')}</span>
           <span className="text-xl font-black text-indigo-900">{summary.totalVotes} {t('chart.votesUnit')}</span>
         </div>
         <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center col-span-2 sm:col-span-1">
-          <span className="text-[11px] font-semibold text-slate-500 block">{t('chart.maxVotes')}</span>
+          <span className="text-2xs font-semibold text-slate-500 block">{t('chart.maxVotes')}</span>
           <span className="text-xl font-black text-indigo-900">{maxVotes} {t('chart.votesUnit')}</span>
         </div>
       </div>
@@ -86,7 +86,7 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
                       {r.option.text}
                     </h5>
                     {r.option.description && (
-                      <p className="text-[11px] text-slate-400 truncate">{r.option.description}</p>
+                      <p className="text-2xs text-slate-400 truncate">{r.option.description}</p>
                     )}
                   </div>
                 </div>
@@ -113,14 +113,14 @@ export const ResultBarChart: React.FC<ResultBarChartProps> = ({
               {/* Voter Breakdown (when enabled by creator) */}
               {showVoterNames && r.voters && r.voters.length > 0 && (
                 <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className="text-[11px] font-bold text-slate-500 flex items-center gap-1 shrink-0 mr-1">
+                  <span className="text-2xs font-bold text-slate-500 flex items-center gap-1 shrink-0 mr-1">
                     <Users className="w-3 h-3 text-indigo-500" />
                     {t('chart.votersBreakdown', { count: r.voters.length })}
                   </span>
                   {r.voters.map((v, vIdx) => (
                     <span
                       key={v.userId + '_' + vIdx}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-medium"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-2xs font-medium"
                     >
                       {v.userPhotoURL && (
                         <img

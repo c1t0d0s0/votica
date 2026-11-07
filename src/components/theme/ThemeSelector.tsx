@@ -109,7 +109,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                   {name}
                 </h5>
                 {theme.id === 'default' && (
-                  <span className="text-[10px] font-semibold text-indigo-600 block mt-0.5">
+                  <span className="text-2xs font-semibold text-indigo-600 block mt-0.5">
                     (デフォルト)
                   </span>
                 )}
@@ -142,7 +142,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
             <span>{getThemeName(currentTheme)}</span>
           </span>
         </div>
-        <p className="text-[11px] text-slate-500 mb-2">
+        <p className="text-2xs text-slate-500 mb-2">
           {getThemeDesc(currentTheme)}
         </p>
 
@@ -156,12 +156,12 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
             {/* Header snippet */}
             <div className="flex items-center justify-between">
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${currentTheme.classes.accentBadge}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold border ${currentTheme.classes.accentBadge}`}
               >
                 <Sparkles className="w-3 h-3" />
                 <span>{getThemeName(currentTheme)}</span>
               </span>
-              <span className={`text-[11px] font-bold ${currentTheme.classes.mutedText}`}>
+              <span className={`text-2xs font-bold ${currentTheme.classes.mutedText}`}>
                 {currentTheme.isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}
               </span>
             </div>

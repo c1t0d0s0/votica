@@ -6,27 +6,46 @@ import { useTranslation } from '../contexts/LanguageContext';
 import { createPoll, normalizeEventInfo } from '../lib/firestoreService';
 import { Poll, PollRound } from '../lib/types';
 import {
-  parseScheduleCandidateLines,
   candidateLinesToOptions,
   sanitizeHttpUrl,
   sortScheduleOptions,
   normalizeCapacity,
+  MAX_SCHEDULE_CANDIDATES,
 } from '../lib/scheduleUtils';
-import { ScheduleQuickDatePicker } from '../components/schedule/ScheduleQuickDatePicker';
+import {
+  CandidateDraft,
+  changeDraftTime,
+  duplicateDraftWithNewTime,
+  linesFromDrafts,
+  removeDraft,
+  sortDrafts,
+} from '../lib/candidateDrafts';
+import { getTheme } from '../lib/themes';
+import { TranslationPath } from '../lib/i18n/translations';
+import { ScheduleCandidatePicker, CandidateDraftList } from '../components/schedule/ScheduleCandidatePicker';
 import { ThemeSelector } from '../components/theme/ThemeSelector';
 import { Button } from '../components/common/Button';
 import {
   Calendar,
-  Sparkles,
   LogIn,
   AlertCircle,
-  Clock,
   Lock,
   Globe,
   Vote as VoteIcon,
   Palette,
   MapPin,
+  ChevronDown,
+  Settings2,
+  CheckCircle2,
+  Circle,
+  FileText,
+  Users,
+  Clock,
 } from 'lucide-react';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const formatForInput = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 export const CreateSchedulePage: React.FC = () => {
   const { currentUser, signInWithGoogle } = useAuth();
@@ -34,71 +53,52 @@ export const CreateSchedulePage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  // Required
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [drafts, setDrafts] = useState<CandidateDraft[]>([]);
 
-  // Event meta info (#6)
+  // Optional (advanced)
+  const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
   const [locationUrl, setLocationUrl] = useState('');
   const [fee, setFee] = useState('');
   const [notes, setNotes] = useState('');
   const [capacityText, setCapacityText] = useState('');
-  const isCapacityInvalid = capacityText.trim() !== '' && normalizeCapacity(capacityText) === null;
-  const isLocationUrlInvalid = locationUrl.trim() !== '' && !sanitizeHttpUrl(locationUrl);
-
-  // Default candidate dates text
-  const [candidateText, setCandidateText] = useState<string>(() => {
-    const d1 = new Date();
-    d1.setDate(d1.getDate() + 1);
-    const d2 = new Date();
-    d2.setDate(d2.getDate() + 2);
-    const d3 = new Date();
-    d3.setDate(d3.getDate() + 3);
-
-    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-    const fmt = (d: Date, time: string) =>
-      `${d.getMonth() + 1}/${d.getDate()}(${dayNames[d.getDay()]}) ${time}`;
-
-    return `${fmt(d1, '19:00〜')}\n${fmt(d2, '19:00〜')}\n${fmt(d3, '19:00〜')}`;
-  });
-
-  // Default dates: start now, end 7 days later
-  const now = new Date();
-  const defaultEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const formatForInput = (d: Date) => {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
-  };
-
-  const [startDate, setStartDate] = useState(formatForInput(now));
-  const [endDate, setEndDate] = useState(formatForInput(defaultEnd));
-
-  // Result visibility (default: true -> public to all participants)
+  const [startDate, setStartDate] = useState(() => formatForInput(new Date()));
+  const [endDate, setEndDate] = useState(() => formatForInput(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
   const [isPublicResult, setIsPublicResult] = useState<boolean>(true);
-
-  // Authentication requirement (default: false -> anonymous/self-declared name for schedule adjustments)
   const [requireAuth, setRequireAuth] = useState<boolean>(false);
-
-  // Show voter names (default: true -> named attendance sheet)
   const [showVoterNames, setShowVoterNames] = useState<boolean>(true);
-
-  // Design theme (default: 'default')
   const [theme, setTheme] = useState<string>('default');
 
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const parsedLines = parseScheduleCandidateLines(candidateText);
+  const isCapacityInvalid = capacityText.trim() !== '' && normalizeCapacity(capacityText) === null;
+  const isLocationUrlInvalid = locationUrl.trim() !== '' && !sanitizeHttpUrl(locationUrl);
+  const sortedDrafts = sortDrafts(drafts);
+  const hasTitle = title.trim().length > 0;
+  const hasDates = drafts.length > 0;
 
-  const handleAddDatesFromPicker = (dates: string[]) => {
-    const current = candidateText.trim();
-    if (!current) {
-      setCandidateText(dates.join('\n'));
-    } else {
-      setCandidateText(current + '\n' + dates.join('\n'));
-    }
+  const deadlineLabel = (() => {
+    const d = new Date(endDate);
+    if (isNaN(d.getTime())) return endDate;
+    return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  })();
+  const capacityValue = normalizeCapacity(capacityText);
+  const advancedSummary = [
+    t('scheduleEx.advancedSummaryDeadline', { date: deadlineLabel }),
+    requireAuth ? t('scheduleEx.advancedSummaryLogin') : t('scheduleEx.advancedSummaryNoLogin'),
+    isPublicResult ? t('scheduleEx.advancedSummaryPublic') : t('scheduleEx.advancedSummaryPrivate'),
+    capacityValue ? t('scheduleEx.advancedSummaryCapacity', { count: capacityValue }) : null,
+    t('scheduleEx.advancedSummaryTheme', { name: t(getTheme(theme).nameKey as TranslationPath) }),
+  ]
+    .filter(Boolean)
+    .join(' ・ ');
+
+  const failAdvanced = (message: string) => {
+    setShowAdvanced(true);
+    showToast('error', message);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -108,50 +108,33 @@ export const CreateSchedulePage: React.FC = () => {
       showToast('error', t('create.toastLoginReq'));
       return;
     }
-
-    if (!title.trim()) {
+    if (!hasTitle) {
       showToast('error', t('schedule.toastTitleReq'));
       return;
     }
-
-    if (parsedLines.length < 1) {
+    const lines = linesFromDrafts(sortedDrafts);
+    if (lines.length < 1) {
       showToast('error', t('schedule.toastMinCandidates'));
       return;
     }
-
-    if (parsedLines.length > 30) {
+    if (lines.length > MAX_SCHEDULE_CANDIDATES) {
       showToast('error', t('schedule.toastMaxCandidates'));
       return;
     }
-
-    if (isCapacityInvalid) {
-      showToast('error', t('scheduleEx.capacityInvalid'));
-      return;
-    }
-
-    if (isLocationUrlInvalid) {
-      showToast('error', t('scheduleEx.invalidUrl'));
-      return;
-    }
+    if (isCapacityInvalid) return failAdvanced(t('scheduleEx.capacityInvalid'));
+    if (isLocationUrlInvalid) return failAdvanced(t('scheduleEx.invalidUrl'));
 
     const startTimestamp = new Date(startDate).getTime();
     const endTimestamp = new Date(endDate).getTime();
-    if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
-      showToast('error', t('create.toastInvalidDates'));
-      return;
-    }
-
-    if (endTimestamp <= startTimestamp) {
-      showToast('error', t('create.toastEndDateFuture'));
-      return;
-    }
+    if (isNaN(startTimestamp) || isNaN(endTimestamp)) return failAdvanced(t('create.toastInvalidDates'));
+    if (endTimestamp <= startTimestamp) return failAdvanced(t('create.toastEndDateFuture'));
 
     try {
       setIsSubmitting(true);
 
       const refDate = new Date(startDate);
-      const options = sortScheduleOptions(candidateLinesToOptions(parsedLines, refDate), refDate);
-      const eventInfo = normalizeEventInfo({ location, locationUrl, fee, notes, capacity: normalizeCapacity(capacityText) });
+      const options = sortScheduleOptions(candidateLinesToOptions(lines, refDate), refDate);
+      const eventInfo = normalizeEventInfo({ location, locationUrl, fee, notes, capacity: capacityValue });
 
       const pollData: Omit<Poll, 'id' | 'createdAt' | 'updatedAt' | 'currentRound' | 'totalRounds'> = {
         title: title.trim(),
@@ -195,50 +178,51 @@ export const CreateSchedulePage: React.FC = () => {
     }
   };
 
+  const inputCls =
+    'w-full text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs';
+  const subHeading = (icon: React.ReactNode, label: string) => (
+    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+      {icon}
+      <span>{label}</span>
+    </h4>
+  );
+
+  const ChecklistItem: React.FC<{ ok: boolean; label: string }> = ({ ok, label }) => (
+    <li className={`flex items-center gap-2 text-sm ${ok ? 'text-emerald-700' : 'text-slate-600'}`}>
+      {ok ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Circle className="w-4 h-4 text-slate-300" />}
+      <span className={ok ? 'line-through decoration-emerald-300' : 'font-semibold'}>{label}</span>
+    </li>
+  );
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
-      {/* Mode Switch Tabs at Top */}
-      <div className="flex items-center gap-2 mb-6 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      {/* Mode Switch Tabs */}
+      <div className="flex items-center gap-2 mb-5 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
         <Link
           to="/create"
-          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
+          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
         >
-          <VoteIcon className="w-3.5 h-3.5" />
+          <VoteIcon className="w-4 h-4" />
           <span>{t('schedule.tabStandardPoll')}</span>
         </Link>
-        <button
-          type="button"
-          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-white text-indigo-600 shadow-xs cursor-default"
-        >
-          <Calendar className="w-3.5 h-3.5" />
+        <span className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-white text-indigo-600 shadow-xs">
+          <Calendar className="w-4 h-4" />
           <span>{t('schedule.tabScheduleAdjust')}</span>
-        </button>
+        </span>
       </div>
 
-      {/* Page Header */}
-      <div className="mb-8 text-center sm:text-left">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold mb-2">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>{t('schedule.createBadge')}</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          {t('schedule.createTitle')}
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          {t('schedule.createSubtitle')}
-        </p>
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{t('schedule.createTitle')}</h1>
+        <p className="text-sm text-slate-500 mt-1">{t('schedule.createSubtitle')}</p>
       </div>
 
-      {/* Login reminder if not logged in */}
       {!currentUser && (
         <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-            <div className="text-xs text-amber-900">
+            <div className="text-sm text-amber-900">
               <span className="font-bold">{t('create.loginRequiredTitle')}</span>
-              <p className="text-amber-700 mt-0.5">
-                {t('create.loginRequiredDesc')}
-              </p>
+              <p className="text-amber-700 mt-0.5">{t('create.loginRequiredDesc')}</p>
             </div>
           </div>
           <Button
@@ -254,357 +238,250 @@ export const CreateSchedulePage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Creation Form */}
-      <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
-        {/* Section 1: Event Information */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-indigo-600" />
-            <span>{t('schedule.eventInfoTitle')}</span>
-          </h3>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              {t('schedule.eventTitleLabel')} <span className="text-rose-500">*</span>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+        {/* ===== Main column ===== */}
+        <div className="space-y-6 min-w-0">
+          {/* Step 1: Event name (required) */}
+          <section className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+            <label htmlFor="schedTitle" className="flex items-center gap-2 text-base font-black text-slate-900 mb-3">
+              <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm flex items-center justify-center">1</span>
+              <span>{t('scheduleEx.createStepTitle')}</span>
+              <span className="text-rose-500">*</span>
             </label>
             <input
+              id="schedTitle"
               type="text"
               required
+              autoFocus
+              maxLength={100}
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder={t('schedule.eventTitlePlaceholder')}
-              className="w-full text-sm sm:text-base px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
+              className="w-full text-base sm:text-lg px-4 py-3 rounded-2xl border-2 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all"
             />
-          </div>
+          </section>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              {t('schedule.eventDescLabel')}
-            </label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={t('schedule.eventDescPlaceholder')}
-              className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
-            />
-          </div>
-
-          {/* Event meta info: location / map URL / fee / notes */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <MapPin className="w-3.5 h-3.5 text-indigo-600" />
-              <span>{t('scheduleEx.eventMetaTitle')}</span>
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  {t('scheduleEx.locationLabel')}
-                </label>
-                <input
-                  type="text"
-                  maxLength={200}
-                  value={location}
-                  onChange={e => setLocation(e.target.value)}
-                  placeholder={t('scheduleEx.locationPlaceholder')}
-                  className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                  {t('scheduleEx.feeLabel')}
-                </label>
-                <input
-                  type="text"
-                  maxLength={100}
-                  value={fee}
-                  onChange={e => setFee(e.target.value)}
-                  placeholder={t('scheduleEx.feePlaceholder')}
-                  className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
-                />
-              </div>
+          {/* Step 2: Candidate dates (required) */}
+          <section className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-base font-black text-slate-900">
+                <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm flex items-center justify-center">2</span>
+                <span>{t('scheduleEx.createStepDates')}</span>
+                <span className="text-rose-500">*</span>
+              </h2>
+              <span className="text-sm font-bold text-indigo-600">
+                {t('schedule.candidateCount', { count: drafts.length })}
+              </span>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                {t('scheduleEx.locationUrlLabel')}
-              </label>
-              <input
-                type="url"
-                inputMode="url"
-                maxLength={1000}
-                value={locationUrl}
-                onChange={e => setLocationUrl(e.target.value)}
-                placeholder={t('scheduleEx.locationUrlPlaceholder')}
-                aria-invalid={isLocationUrlInvalid}
-                className={`w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm ${isLocationUrlInvalid ? 'border-rose-400 focus:ring-rose-400' : ''}`}
-              />
-              {isLocationUrlInvalid && (
-                <p className="text-[11px] text-rose-600 mt-1">{t('scheduleEx.invalidUrl')}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                {t('scheduleEx.notesLabel')}
-              </label>
-              <textarea
-                rows={2}
-                maxLength={1000}
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder={t('scheduleEx.notesPlaceholder')}
-                className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
-              />
-            </div>
-          </div>
-        </div>
+            <ScheduleCandidatePicker value={drafts} onChange={setDrafts} listClassName="lg:hidden" />
+          </section>
 
-        {/* Section 2: Candidate Dates Input */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-indigo-600" />
-              <span>{t('schedule.candidateDatesTitle')}</span>
-            </h3>
-            <span className="text-xs font-bold text-indigo-600">
-              {t('schedule.candidateCount', { count: parsedLines.length })}
-            </span>
-          </div>
-
-          {/* Quick Date Picker / Preset Helper */}
-          <ScheduleQuickDatePicker onAddDates={handleAddDatesFromPicker} />
-
-          {/* Multiline textarea for dates */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              {t('schedule.candidateTextareaLabel')} <span className="text-rose-500">*</span>
-            </label>
-            <textarea
-              rows={6}
-              required
-              value={candidateText}
-              onChange={e => setCandidateText(e.target.value)}
-              placeholder={t('schedule.candidateTextareaPlaceholder')}
-              className="w-full font-mono text-xs sm:text-sm px-4 py-3 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed shadow-sm"
-            />
-            <p className="text-[11px] text-slate-400 mt-1.5">
-              {t('schedule.candidateTextareaHint')}
-            </p>
-          </div>
-        </div>
-
-        {/* Section 3: Deadline & Advanced Settings */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-indigo-600" />
-              <span>{t('schedule.settingsTitle')}</span>
-            </h3>
-
+          {/* Advanced settings (optional, collapsed) */}
+          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <button
               type="button"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-700 cursor-pointer"
+              onClick={() => setShowAdvanced(v => !v)}
+              aria-expanded={showAdvanced}
+              className="w-full flex items-start justify-between gap-3 p-5 sm:p-6 text-left hover:bg-slate-50/70 cursor-pointer"
             >
-              {showAdvanced ? t('schedule.hideAdvanced') : t('schedule.showAdvanced')}
+              <span className="min-w-0">
+                <span className="flex items-center gap-2 text-base font-black text-slate-900">
+                  <Settings2 className="w-5 h-5 text-indigo-600" />
+                  {t('scheduleEx.advancedTitle')}
+                </span>
+                <span className="block text-sm text-slate-500 mt-1">
+                  {showAdvanced ? t('scheduleEx.advancedDesc') : advancedSummary}
+                </span>
+              </span>
+              <ChevronDown
+                className={`w-5 h-5 text-slate-500 shrink-0 mt-0.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
+              />
             </button>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                {t('create.endDate')} (回答締め切り) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                {t('create.startDate')}
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm"
-              />
-            </div>
-          </div>
-
-          {/* Participant capacity per candidate */}
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              {t('scheduleEx.capacityLabel')}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={1000}
-                step={1}
-                value={capacityText}
-                onChange={e => setCapacityText(e.target.value)}
-                placeholder={t('scheduleEx.capacityPlaceholder')}
-                aria-invalid={isCapacityInvalid}
-                className={`w-32 text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-sm ${
-                  isCapacityInvalid ? 'border-rose-400' : 'border-slate-300'
-                }`}
-              />
-              <span className="text-xs text-slate-600">{t('scheduleEx.capacityUnit')}</span>
-            </div>
-            <p className={`text-[11px] mt-1 ${isCapacityInvalid ? 'text-rose-600' : 'text-slate-400'}`}>
-              {isCapacityInvalid ? t('scheduleEx.capacityInvalid') : t('scheduleEx.capacityHint')}
-            </p>
-          </div>
-
-          {/* Advanced options toggle */}
-          {showAdvanced && (
-            <div className="space-y-4 pt-2 border-t border-slate-100">
-              {/* Login Requirement Setting */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">
-                  {t('create.voterAuth')}
-                </label>
-                <div
-                  onClick={() => setRequireAuth(!requireAuth)}
-                  className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3.5 select-none"
-                >
-                  <input
-                    type="checkbox"
-                    id="schedNoLoginCheckbox"
-                    checked={!requireAuth}
-                    onChange={e => setRequireAuth(!e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+            {showAdvanced && (
+              <div className="px-5 sm:px-6 pb-6 space-y-7 border-t border-slate-100 pt-5">
+                {/* Description */}
+                <div className="space-y-2">
+                  {subHeading(<FileText className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionDescription'))}
+                  <textarea
+                    rows={3}
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder={t('schedule.eventDescPlaceholder')}
+                    className={inputCls}
                   />
-                  <div className="flex-1 text-xs">
-                    <label
-                      htmlFor="schedNoLoginCheckbox"
-                      className="font-bold text-slate-900 cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>{t('create.noLoginCheckbox')}</span>
-                    </label>
-                    <p className="text-slate-500 mt-1 leading-relaxed">
-                      {t('schedule.noLoginDesc')}
-                    </p>
-                  </div>
                 </div>
-              </div>
 
-              {/* Voter Names Breakdown Setting */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">
-                  {t('create.voterNamesVisibility')}
-                </label>
-                <div
-                  onClick={() => setShowVoterNames(!showVoterNames)}
-                  className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3.5 select-none"
-                >
-                  <input
-                    type="checkbox"
-                    id="schedShowVoterNamesCheckbox"
-                    checked={showVoterNames}
-                    onChange={e => setShowVoterNames(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
-                  />
-                  <div className="flex-1 text-xs">
-                    <label
-                      htmlFor="schedShowVoterNamesCheckbox"
-                      className="font-bold text-slate-900 cursor-pointer flex items-center gap-1.5"
-                    >
-                      <span>{t('schedule.showAttendanceNamesCheckbox')}</span>
-                    </label>
-                    <p className="text-slate-500 mt-1 leading-relaxed">
-                      {t('schedule.showAttendanceNamesDesc')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Result Visibility */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2">
-                  {t('create.resultVisibility')}
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div
-                    onClick={() => setIsPublicResult(true)}
-                    className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                      isPublicResult
-                        ? 'border-indigo-600 bg-indigo-50/60 font-semibold shadow-sm'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 text-xs text-slate-900">
-                      <Globe className="w-4 h-4 text-emerald-600" />
-                      <span className="font-bold">{t('schedule.publicAttendanceTitle')}</span>
+                {/* Event meta */}
+                <div className="space-y-3">
+                  {subHeading(<MapPin className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionEventMeta'))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">{t('scheduleEx.locationLabel')}</label>
+                      <input type="text" maxLength={200} value={location} onChange={e => setLocation(e.target.value)} placeholder={t('scheduleEx.locationPlaceholder')} className={inputCls} />
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      {t('schedule.publicAttendanceDesc')}
-                    </p>
-                  </div>
-
-                  <div
-                    onClick={() => setIsPublicResult(false)}
-                    className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                      !isPublicResult
-                        ? 'border-indigo-600 bg-indigo-50/60 font-semibold shadow-sm'
-                        : 'border-slate-200 bg-white hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 text-xs text-slate-900">
-                      <Lock className="w-4 h-4 text-indigo-600" />
-                      <span className="font-bold">{t('create.adminOnlyTitle')}</span>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">{t('scheduleEx.feeLabel')}</label>
+                      <input type="text" maxLength={100} value={fee} onChange={e => setFee(e.target.value)} placeholder={t('scheduleEx.feePlaceholder')} className={inputCls} />
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      {t('create.adminOnlyDesc')}
-                    </p>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-600 mb-1">{t('scheduleEx.locationUrlLabel')}</label>
+                      <input
+                        type="url"
+                        inputMode="url"
+                        maxLength={1000}
+                        value={locationUrl}
+                        onChange={e => setLocationUrl(e.target.value)}
+                        placeholder={t('scheduleEx.locationUrlPlaceholder')}
+                        aria-invalid={isLocationUrlInvalid}
+                        className={`${inputCls} ${isLocationUrlInvalid ? 'border-rose-400 focus:ring-rose-400' : ''}`}
+                      />
+                      {isLocationUrlInvalid && <p className="text-xs text-rose-600 mt-1">{t('scheduleEx.invalidUrl')}</p>}
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-600 mb-1">{t('scheduleEx.notesLabel')}</label>
+                      <textarea rows={2} maxLength={1000} value={notes} onChange={e => setNotes(e.target.value)} placeholder={t('scheduleEx.notesPlaceholder')} className={inputCls} />
+                    </div>
                   </div>
                 </div>
+
+                {/* Capacity */}
+                <div className="space-y-2">
+                  {subHeading(<Users className="w-4 h-4 text-indigo-600" />, t('scheduleEx.capacityLabel'))}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={1000}
+                      step={1}
+                      value={capacityText}
+                      onChange={e => setCapacityText(e.target.value)}
+                      placeholder={t('scheduleEx.capacityPlaceholder')}
+                      aria-invalid={isCapacityInvalid}
+                      aria-label={t('scheduleEx.capacityLabel')}
+                      className={`w-32 text-sm px-3.5 py-2.5 rounded-xl border bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none ${
+                        isCapacityInvalid ? 'border-rose-400' : 'border-slate-300'
+                      }`}
+                    />
+                    <span className="text-sm text-slate-600">{t('scheduleEx.capacityUnit')}</span>
+                  </div>
+                  <p className={`text-xs ${isCapacityInvalid ? 'text-rose-600' : 'text-slate-500'}`}>
+                    {isCapacityInvalid ? t('scheduleEx.capacityInvalid') : t('scheduleEx.capacityHint')}
+                  </p>
+                </div>
+
+                {/* Response period */}
+                <div className="space-y-2">
+                  {subHeading(<Clock className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionPeriod'))}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">
+                        {t('create.endDate')} <span className="text-rose-500">*</span>
+                      </label>
+                      <input type="datetime-local" required value={endDate} onChange={e => setEndDate(e.target.value)} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1">{t('create.startDate')}</label>
+                      <input type="datetime-local" required value={startDate} onChange={e => setStartDate(e.target.value)} className={inputCls} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Respondents & visibility */}
+                <div className="space-y-3">
+                  {subHeading(<Lock className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionRespondents'))}
+                  <label className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3 select-none">
+                    <input
+                      type="checkbox"
+                      checked={!requireAuth}
+                      onChange={e => setRequireAuth(!e.target.checked)}
+                      className="mt-0.5 w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className="flex-1 text-sm">
+                      <span className="font-bold text-slate-900 block">{t('create.noLoginCheckbox')}</span>
+                      <span className="text-slate-500 mt-1 block leading-relaxed">{t('schedule.noLoginDesc')}</span>
+                    </span>
+                  </label>
+                  <label className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3 select-none">
+                    <input
+                      type="checkbox"
+                      checked={showVoterNames}
+                      onChange={e => setShowVoterNames(e.target.checked)}
+                      className="mt-0.5 w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className="flex-1 text-sm">
+                      <span className="font-bold text-slate-900 block">{t('schedule.showAttendanceNamesCheckbox')}</span>
+                      <span className="text-slate-500 mt-1 block leading-relaxed">{t('schedule.showAttendanceNamesDesc')}</span>
+                    </span>
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      { value: true, icon: <Globe className="w-4 h-4 text-emerald-600" />, title: t('schedule.publicAttendanceTitle'), desc: t('schedule.publicAttendanceDesc') },
+                      { value: false, icon: <Lock className="w-4 h-4 text-indigo-600" />, title: t('create.adminOnlyTitle'), desc: t('create.adminOnlyDesc') },
+                    ].map(opt => (
+                      <button
+                        key={String(opt.value)}
+                        type="button"
+                        aria-pressed={isPublicResult === opt.value}
+                        onClick={() => setIsPublicResult(opt.value)}
+                        className={`text-left p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                          isPublicResult === opt.value ? 'border-indigo-600 bg-indigo-50/60 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                          {opt.icon}
+                          {opt.title}
+                        </span>
+                        <span className="block text-xs text-slate-500 mt-1">{opt.desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Theme */}
+                <div className="space-y-2">
+                  {subHeading(<Palette className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionTheme'))}
+                  <p className="text-xs text-slate-500">{t('theme.sectionDesc')}</p>
+                  <ThemeSelector selectedThemeId={theme} onSelectTheme={setTheme} />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </section>
         </div>
 
-        {/* Section 4: Page Design Theme (20+ variations) */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Palette className="w-4 h-4 text-indigo-600" />
-              <span>{t('theme.sectionTitle')}</span>
-            </h3>
-            <span className="text-xs text-slate-400">
-              全22種類
-            </span>
+        {/* ===== Sidebar (sticky on desktop) ===== */}
+        <aside className="lg:sticky lg:top-20 space-y-4 min-w-0">
+          <div className="hidden lg:block">
+            <CandidateDraftList
+              drafts={sortedDrafts}
+              onRemove={id => setDrafts(prev => removeDraft(prev, id))}
+              onChangeTime={(id, time) => setDrafts(prev => changeDraftTime(prev, id, time))}
+              onDuplicate={id => setDrafts(prev => duplicateDraftWithNewTime(prev, id, MAX_SCHEDULE_CANDIDATES).drafts)}
+              onClear={() => setDrafts([])}
+              scrollable
+            />
           </div>
-          <p className="text-xs text-slate-500">
-            {t('theme.sectionDesc')}
-          </p>
 
-          <ThemeSelector selectedThemeId={theme} onSelectTheme={setTheme} />
-        </div>
-
-        {/* Submit action */}
-        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-xs text-slate-400 text-center sm:text-left">
-            {t('schedule.footerNote')}
-          </span>
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            isLoading={isSubmitting}
-            disabled={!currentUser}
-            className="w-full sm:w-auto px-8 shadow-md"
-          >
-            {t('schedule.submitBtn')}
-          </Button>
-        </div>
+          <div className="sticky bottom-3 lg:static z-20 bg-white/95 backdrop-blur p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-lg lg:shadow-sm space-y-3">
+            <p className="text-sm font-black text-slate-800">{t('scheduleEx.checklistTitle')}</p>
+            <ul className="space-y-1.5">
+              <ChecklistItem ok={hasTitle} label={t('scheduleEx.checklistTitleMissing')} />
+              <ChecklistItem ok={hasDates} label={t('scheduleEx.checklistDatesMissing')} />
+            </ul>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              isLoading={isSubmitting}
+              disabled={!currentUser || !hasTitle || !hasDates}
+              className="w-full shadow-md"
+            >
+              {t('schedule.submitBtn')}
+            </Button>
+            <p className="text-xs text-slate-500">{t('schedule.footerNote')}</p>
+          </div>
+        </aside>
       </form>
     </div>
   );

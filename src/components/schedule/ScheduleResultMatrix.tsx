@@ -97,7 +97,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
               <Crown className="w-6 h-6 fill-white text-white" />
             </div>
             <div>
-              <span className="text-[11px] font-black tracking-wider uppercase text-amber-800 block">
+              <span className="text-2xs font-black tracking-wider uppercase text-amber-800 block">
                 {t('schedule.bestCandidateLabel')}
               </span>
               <div className="flex flex-wrap items-center gap-2 mt-0.5">
@@ -184,7 +184,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                           className="w-5 h-5 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
+                        <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xs font-bold">
                           {voter.userDisplayName[0] || 'U'}
                         </div>
                       )}
@@ -195,7 +195,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                         <button
                           type="button"
                           onClick={() => onEditVoter(voter)}
-                          className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+                          className="inline-flex items-center gap-0.5 text-2xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
                         >
                           <Pencil className="w-2.5 h-2.5" />
                           <span>{t('scheduleEx.editLink')}</span>
@@ -233,19 +233,19 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                         )}
                         <span className="leading-snug">{optSummary.option.text}</span>
                         {isFull && (
-                          <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-600 text-white">
+                          <span className="text-2xs font-black px-1.5 py-0.5 rounded-md bg-rose-600 text-white">
                             {t('scheduleEx.fullBadge')}
                           </span>
                         )}
                         {isDecided && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
+                          <span className="inline-flex items-center gap-0.5 text-2xs font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white">
                             <CalendarCheck className="w-3 h-3" />
                             {t('scheduleEx.decidedRowBadge')}
                           </span>
                         )}
                       </div>
                       {optSummary.option.description && (
-                        <p className="text-[11px] text-slate-400 font-normal mt-0.5">
+                        <p className="text-2xs text-slate-400 font-normal mt-0.5">
                           {optSummary.option.description}
                         </p>
                       )}
@@ -255,13 +255,13 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                     <td className="py-3.5 px-3 text-center">
                       <span className="inline-block font-black text-sm text-indigo-900">
                         {optSummary.score}
-                        <span className="text-[10px] font-normal text-slate-400 ml-0.5">pt</span>
+                        <span className="text-2xs font-normal text-slate-400 ml-0.5">pt</span>
                       </span>
                     </td>
 
                     {/* Breakdown Counts */}
                     <td className="py-3.5 px-3 text-center">
-                      <div className="inline-flex items-center gap-1.5 text-[11px] font-bold">
+                      <div className="inline-flex items-center gap-1.5 text-2xs font-bold">
                         <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
                           {getScheduleSymbol('circle', language)} {optSummary.circleCount}
                           {capacity ? `/${capacity}` : ''}
@@ -300,7 +300,7 @@ export const ScheduleResultMatrix: React.FC<ScheduleResultMatrixProps> = ({
                   {summary.voters.map(voter => (
                     <td
                       key={voter.userId}
-                      className="py-3 px-3 text-center text-[11px] text-slate-600 leading-relaxed max-w-[140px]"
+                      className="py-3 px-3 text-center text-2xs text-slate-600 leading-relaxed max-w-[140px]"
                     >
                       {voter.comment ? (
                         <div

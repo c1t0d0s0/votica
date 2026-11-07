@@ -106,7 +106,7 @@ export const DecisionBanner: React.FC<DecisionBannerProps> = ({ poll, isAdmin, o
           <CalendarCheck className="w-6 h-6" />
         </div>
         <div className="min-w-0">
-          <span className="text-[11px] font-black tracking-wider uppercase text-emerald-800 block">
+          <span className="text-2xs font-black tracking-wider uppercase text-emerald-800 block">
             {t('scheduleEx.decidedBannerTitle')}
           </span>
           <p className="text-base sm:text-lg font-black text-slate-900 mt-0.5 break-words">

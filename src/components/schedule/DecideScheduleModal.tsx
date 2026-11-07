@@ -127,7 +127,7 @@ export const DecideScheduleModal: React.FC<DecideScheduleModalProps> = ({
                     {optSummary.isBest && <Crown className="w-4 h-4 text-amber-500 fill-amber-400 shrink-0" />}
                     <span className="text-sm font-bold text-slate-900 truncate">{optSummary.option.text}</span>
                   </span>
-                  <span className="text-[11px] font-bold text-slate-500 shrink-0">
+                  <span className="text-2xs font-bold text-slate-500 shrink-0">
                     {getScheduleSymbol('circle', language)}
                     {optSummary.circleCount} {getScheduleSymbol('triangle', language)}
                     {optSummary.triangleCount} {getScheduleSymbol('cross', language)}
@@ -140,7 +140,7 @@ export const DecideScheduleModal: React.FC<DecideScheduleModalProps> = ({
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-          <p className="text-[11px] text-slate-500">{t('scheduleEx.decideParsedHint')}</p>
+          <p className="text-2xs text-slate-500">{t('scheduleEx.decideParsedHint')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">{t('scheduleEx.decideDateLabel')}</label>

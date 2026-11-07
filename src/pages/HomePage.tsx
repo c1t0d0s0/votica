@@ -39,7 +39,7 @@ export const HomePage: React.FC = () => {
   }, [loadPolls]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+    <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 py-8 space-y-10">
 
       {/* Main Creation Hero Section (2 High-Affordance Big CTA Buttons - Always Side-by-Side) */}
       <section className="grid grid-cols-2 gap-3 sm:gap-6">
@@ -58,7 +58,7 @@ export const HomePage: React.FC = () => {
               <div className="w-8 h-8 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-inner group-hover:scale-110 transition-transform">
                 <Calendar className="w-4 h-4 sm:w-7 sm:h-7 stroke-[2.5]" />
               </div>
-              <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30 shadow-xs">
+              <span className="inline-flex items-center gap-1 text-2xs sm:text-xs font-bold px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30 shadow-xs">
                 <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden xs:inline">{t('home.createScheduleCardBadge')}</span>
                 <span className="xs:hidden">{t('schedule.badge')}</span>
@@ -70,7 +70,7 @@ export const HomePage: React.FC = () => {
                 {t('home.createScheduleCardTitle')}
               </h2>
               {/* Short description for mobile */}
-              <p className="block sm:hidden text-[11px] text-indigo-100/90 mt-1 leading-snug line-clamp-2">
+              <p className="block sm:hidden text-2xs text-indigo-100/90 mt-1 leading-snug line-clamp-2">
                 {t('home.createScheduleCardDescShort')}
               </p>
               {/* Detailed description for tablet / desktop */}
@@ -84,7 +84,7 @@ export const HomePage: React.FC = () => {
             <span className="hidden md:inline text-xs font-bold text-indigo-100 tracking-wide">
               {t('schedule.tabScheduleAdjust')}
             </span>
-            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl bg-white text-indigo-700 font-bold text-[11px] sm:text-xs shadow-md group-hover:bg-indigo-50 transition-all">
+            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl bg-white text-indigo-700 font-bold text-2xs sm:text-xs shadow-md group-hover:bg-indigo-50 transition-all">
               <span>{t('schedule.homeCreateBtn')}</span>
               <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-0.5 sm:group-hover:translate-x-1 transition-transform" />
             </div>
@@ -106,7 +106,7 @@ export const HomePage: React.FC = () => {
               <div className="w-8 h-8 sm:w-13 sm:h-13 rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-md border border-white/25 flex items-center justify-center text-white shadow-inner group-hover:scale-110 transition-transform">
                 <Vote className="w-4 h-4 sm:w-7 sm:h-7 stroke-[2.5]" />
               </div>
-              <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30 shadow-xs">
+              <span className="inline-flex items-center gap-1 text-2xs sm:text-xs font-bold px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-white/20 text-white backdrop-blur-md border border-white/30 shadow-xs">
                 <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden xs:inline">{t('home.createPollCardBadge')}</span>
                 <span className="xs:hidden">{t('common.vote')}</span>
@@ -118,7 +118,7 @@ export const HomePage: React.FC = () => {
                 {t('home.createPollCardTitle')}
               </h2>
               {/* Short description for mobile */}
-              <p className="block sm:hidden text-[11px] text-pink-100/90 mt-1 leading-snug line-clamp-2">
+              <p className="block sm:hidden text-2xs text-pink-100/90 mt-1 leading-snug line-clamp-2">
                 {t('home.createPollCardDescShort')}
               </p>
               {/* Detailed description for tablet / desktop */}
@@ -132,7 +132,7 @@ export const HomePage: React.FC = () => {
             <span className="hidden md:inline text-xs font-bold text-pink-100 tracking-wide">
               {t('schedule.tabStandardPoll')}
             </span>
-            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl bg-white text-pink-700 font-bold text-[11px] sm:text-xs shadow-md group-hover:bg-pink-50 transition-all">
+            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-1 sm:gap-2 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl bg-white text-pink-700 font-bold text-2xs sm:text-xs shadow-md group-hover:bg-pink-50 transition-all">
               <span>{t('common.createPoll')}</span>
               <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-0.5 sm:group-hover:translate-x-1 transition-transform" />
             </div>
@@ -193,7 +193,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {myPolls.map(poll => (
                   <PollCard
                     key={poll.id}
@@ -221,7 +221,7 @@ export const HomePage: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {publicPolls.map(poll => (
                   <PollCard
                     key={poll.id}

@@ -764,8 +764,8 @@ export const PollVotingPage: React.FC = () => {
   };
 
   return (
-    <div className={`-mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className={`px-4 sm:px-6 lg:px-8 py-8 transition-colors ${currentTheme.classes.pageBg}`}>
+      <div className="max-w-7xl 2xl:max-w-[1600px] mx-auto space-y-6">
         {/* Top Navigation & Round Selector */}
         <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl border shadow-sm ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
           <div className="flex items-center gap-2 flex-wrap">
@@ -792,19 +792,19 @@ export const PollVotingPage: React.FC = () => {
             )}
 
             {isAnonymousAllowed ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="inline-flex items-center gap-1 text-2xs font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <Globe className="w-3 h-3 text-emerald-600" />
                 {t('voting.noLoginAllowed')}
               </span>
             ) : (
-              <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
+              <span className={`inline-flex items-center gap-1 text-2xs font-medium px-2 py-0.5 rounded-full border ${currentTheme.classes.accentBadge}`}>
                 <ShieldCheck className="w-3 h-3 text-slate-500" />
                 {t('voting.loginRequired')}
               </span>
             )}
 
             {isAdmin && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs ${currentTheme.classes.primaryBtn}`}>
+              <span className={`text-2xs font-bold px-2 py-0.5 rounded-full shadow-xs ${currentTheme.classes.primaryBtn}`}>
                 {t('voting.adminBadge')}
               </span>
             )}
@@ -856,6 +856,9 @@ export const PollVotingPage: React.FC = () => {
           />
         )}
 
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
+        {/* Side column (desktop): event info, decision, admin actions */}
+        <aside className="space-y-6 min-w-0 lg:col-start-2 lg:row-start-1 lg:sticky lg:top-20">
         {/* Poll Header Card */}
         <div className={`rounded-3xl p-6 sm:p-8 border shadow-sm space-y-4 ${currentTheme.classes.cardBg} ${currentTheme.classes.cardBorder}`}>
           <div>
@@ -866,7 +869,7 @@ export const PollVotingPage: React.FC = () => {
                   : currentRoundData.title || t('voting.roundN', { round: currentRoundData.roundNumber })}
               </span>
               {currentRoundData.runoffSourceRound && (
-                <span className="text-[11px] text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md font-medium">
+                <span className="text-2xs text-pink-600 bg-pink-50 px-2 py-0.5 rounded-md font-medium">
                   {t('voting.runoffFromRound', { round: currentRoundData.runoffSourceRound })}
                 </span>
               )}
@@ -950,6 +953,10 @@ export const PollVotingPage: React.FC = () => {
         />
       )}
 
+        </aside>
+
+        {/* Main column: response form */}
+        <div className="space-y-6 min-w-0 lg:col-start-1 lg:row-start-1">
       {/* Round Status Banner when Closed or Progressing (Standard Poll) */}
       {!isScheduleMode && isVotingClosed && (
         <>
@@ -1103,7 +1110,7 @@ export const PollVotingPage: React.FC = () => {
             <label className={`block text-xs font-bold mb-1.5 flex items-center gap-1.5 ${currentTheme.classes.bodyText}`}>
               <MessageSquare className={`w-3.5 h-3.5 ${currentTheme.classes.primaryText}`} />
               <span>{t('schedule.commentLabel')}</span>
-              <span className={`text-[11px] font-normal ${currentTheme.classes.mutedText}`}>({t('schedule.optional')})</span>
+              <span className={`text-2xs font-normal ${currentTheme.classes.mutedText}`}>({t('schedule.optional')})</span>
             </label>
             <input
               type="text"
@@ -1121,7 +1128,7 @@ export const PollVotingPage: React.FC = () => {
             <label className={`block text-xs font-bold mb-1.5 flex items-center gap-1.5 ${currentTheme.classes.bodyText}`}>
               <KeyRound className={`w-3.5 h-3.5 ${currentTheme.classes.primaryText}`} />
               <span>{t('scheduleEx.editPasswordLabel')}</span>
-              <span className={`text-[11px] font-normal ${currentTheme.classes.mutedText}`}>({t('schedule.optional')})</span>
+              <span className={`text-2xs font-normal ${currentTheme.classes.mutedText}`}>({t('schedule.optional')})</span>
             </label>
             <div className="flex gap-2">
               <input
@@ -1137,7 +1144,7 @@ export const PollVotingPage: React.FC = () => {
                 {showEditPassword ? t('scheduleEx.hidePassword') : t('scheduleEx.showPassword')}
               </Button>
             </div>
-            <p className={`text-[11px] mt-1.5 leading-relaxed ${currentTheme.classes.mutedText}`}>
+            <p className={`text-2xs mt-1.5 leading-relaxed ${currentTheme.classes.mutedText}`}>
               {userVote ? t('scheduleEx.editPasswordHintUpdate') : t('scheduleEx.editPasswordHintNew')}
             </p>
           </div>
@@ -1167,7 +1174,7 @@ export const PollVotingPage: React.FC = () => {
           ) : isAnonymousAllowed ? (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full">
               <div className="w-full sm:w-60 text-left">
-                <label className={`block text-[11px] font-bold mb-1 ${currentTheme.classes.bodyText}`}>
+                <label className={`block text-2xs font-bold mb-1 ${currentTheme.classes.bodyText}`}>
                   {t('voting.anonNameLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -1245,6 +1252,9 @@ export const PollVotingPage: React.FC = () => {
           )}
         </div>
       </div>
+
+        </div>
+        </div>
 
       {/* Realtime Attendance Matrix Table for Schedule Mode (Chouseisan Style) */}
       {isScheduleMode && scheduleSummary && (poll.isPublicResult || isAdmin) && (

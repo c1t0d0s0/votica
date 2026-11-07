@@ -148,7 +148,7 @@ export const CreatePollPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
       {/* Mode Switch Tabs at Top */}
       <div className="flex items-center gap-2 mb-6 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
         <button
@@ -207,7 +207,8 @@ export const CreatePollPage: React.FC = () => {
       )}
 
       {/* Main Creation Form */}
-      <form onSubmit={handleSubmit} className="space-y-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+        <div className="space-y-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm min-w-0">
         {/* Section 1: Basic Information */}
         <div className="space-y-4">
           <h3 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
@@ -344,7 +345,7 @@ export const CreatePollPage: React.FC = () => {
                   <Lock className="w-4 h-4 text-indigo-600" />
                   <span className="font-bold">{t('create.adminOnlyTitle')}</span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-2xs text-slate-500 mt-1">
                   {t('create.adminOnlyDesc')}
                 </p>
               </div>
@@ -361,7 +362,7 @@ export const CreatePollPage: React.FC = () => {
                   <Globe className="w-4 h-4 text-emerald-600" />
                   <span className="font-bold">{t('create.publicResultTitle')}</span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-2xs text-slate-500 mt-1">
                   {t('create.publicResultDesc')}
                 </p>
               </div>
@@ -447,22 +448,28 @@ export const CreatePollPage: React.FC = () => {
           <ThemeSelector selectedThemeId={theme} onSelectTheme={setTheme} />
         </div>
 
-        {/* Submit action */}
-        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-xs text-slate-400 text-center sm:text-left">
-            {t('create.footerNote')}
-          </span>
+        </div>
+
+        {/* Submit action (sticky sidebar on desktop, sticky bar on mobile) */}
+        <aside className="sticky bottom-3 lg:top-20 lg:bottom-auto z-20 bg-white/95 backdrop-blur p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-lg lg:shadow-sm space-y-3 min-w-0">
+          <dl className="hidden lg:grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+            <dt className="text-slate-500">{t('create.optionsSettings')}</dt>
+            <dd className="font-bold text-slate-900 text-right">{options.filter(o => o.text.trim()).length} / 20</dd>
+            <dt className="text-slate-500">{t('create.endDate')}</dt>
+            <dd className="font-bold text-slate-900 text-right">{endDate.replace('T', ' ')}</dd>
+          </dl>
           <Button
             type="submit"
             variant="primary"
             size="lg"
             isLoading={isSubmitting}
             disabled={!currentUser}
-            className="w-full sm:w-auto px-8"
+            className="w-full"
           >
             {t('create.submitButton')}
           </Button>
-        </div>
+          <p className="text-xs text-slate-500">{t('create.footerNote')}</p>
+        </aside>
       </form>
     </div>
   );

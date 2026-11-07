@@ -169,7 +169,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
                   <span>{t('runoffModal.recommendedBadge')}</span>
                 </div>
                 <div className="text-xs font-semibold">{t('runoffModal.tiedOnlyTitle')}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">
+                <div className="text-2xs text-slate-500 mt-0.5">
                   {t('runoffModal.tiedCandidatesDesc', { count: summary.tiedFirstOptions.length })}
                 </div>
               </button>
@@ -189,7 +189,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
                 <span>{t('runoffModal.topKBadge', { k: 2 })}</span>
               </div>
               <div className="text-xs font-semibold">{t('runoffModal.topKTitle', { k: 2 })}</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">{t('runoffModal.topKDesc', { k: 2 })}</div>
+              <div className="text-2xs text-slate-500 mt-0.5">{t('runoffModal.topKDesc', { k: 2 })}</div>
             </button>
 
             <button
@@ -206,7 +206,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
                 <span>{t('runoffModal.customBadge')}</span>
               </div>
               <div className="text-xs font-semibold">{t('runoffModal.customTitle')}</div>
-              <div className="text-[10px] text-slate-500 mt-0.5">{t('runoffModal.customDesc')}</div>
+              <div className="text-2xs text-slate-500 mt-0.5">{t('runoffModal.customDesc')}</div>
             </button>
           </div>
         </div>
@@ -217,7 +217,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
             <label className="text-xs font-bold text-slate-700">
               {t('runoffModal.selectedCandidatesLabel', { count: selectedCandidateIds.length })}
             </label>
-            <span className="text-[11px] text-slate-500">{t('runoffModal.clickToToggle')}</span>
+            <span className="text-2xs text-slate-500">{t('runoffModal.clickToToggle')}</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 bg-slate-50 rounded-xl border border-slate-200">
@@ -247,7 +247,7 @@ export const RunoffWizardModal: React.FC<RunoffWizardModalProps> = ({
                     style={{ backgroundColor: r.option.color }}
                   />
                   <span className="flex-1 truncate">{r.option.text}</span>
-                  <span className="text-[10px] text-slate-400 shrink-0">
+                  <span className="text-2xs text-slate-400 shrink-0">
                     {t('runoffModal.previousStats', { votes: r.votesCount, rank: r.rank })}
                   </span>
                 </div>

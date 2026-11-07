@@ -79,7 +79,7 @@ export const EditEventInfoModal: React.FC<EditEventInfoModalProps> = ({ isOpen, 
             aria-invalid={isUrlInvalid}
             className={`${inputCls} ${isUrlInvalid ? 'border-rose-400 focus:ring-rose-400' : ''}`}
           />
-          {isUrlInvalid && <p className="text-[11px] text-rose-600 mt-1">{t('scheduleEx.invalidUrl')}</p>}
+          {isUrlInvalid && <p className="text-2xs text-rose-600 mt-1">{t('scheduleEx.invalidUrl')}</p>}
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1.5">{t('scheduleEx.feeLabel')}</label>
@@ -120,7 +120,7 @@ export const EditEventInfoModal: React.FC<EditEventInfoModalProps> = ({ isOpen, 
             />
             <span className="text-xs text-slate-600">{t('scheduleEx.capacityUnit')}</span>
           </div>
-          <p className={`text-[11px] mt-1 ${isCapacityInvalid ? 'text-rose-600' : 'text-slate-400'}`}>
+          <p className={`text-2xs mt-1 ${isCapacityInvalid ? 'text-rose-600' : 'text-slate-400'}`}>
             {isCapacityInvalid ? t('scheduleEx.capacityInvalid') : t('scheduleEx.capacityHint')}
           </p>
         </div>

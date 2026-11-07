@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Readability: slightly larger small text sizes for everyone (class names unchanged) */
+@theme {
+  --text-2xs: 0.75rem; /* 12px: replaces former 10-11px labels */
+  --text-2xs--line-height: 1.1rem;
+  --text-xs: 0.8125rem; /* 13px (was 12px) */
+  --text-xs--line-height: 1.25rem;
+  --text-sm: 0.9375rem; /* 15px (was 14px) */
+  --text-sm--line-height: 1.45rem;
+}
+
 @layer base {
   body {
     @apply antialiased text-slate-800 bg-slate-50 min-h-screen selection:bg-indigo-500 selection:text-white;
@@ -10,6 +20,15 @@
   select {
     color: #0f172a !important; /* text-slate-900 */
     background-color: #ffffff;
+  }
+
+  /* Prevent iOS zoom on focus: form controls are at least 16px on small screens */
+  @media (max-width: 639px) {
+    input:not([type='checkbox']):not([type='radio']),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 
   input::placeholder,

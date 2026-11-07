@@ -158,7 +158,7 @@ export const ScheduleResponseEditModal: React.FC<ScheduleResponseEditModalProps>
               }`}
             />
             {nameError && (
-              <p className="text-[11px] text-rose-600 mt-1">{t('scheduleEx.toastNameRequired')}</p>
+              <p className="text-2xs text-rose-600 mt-1">{t('scheduleEx.toastNameRequired')}</p>
             )}
           </div>
 
