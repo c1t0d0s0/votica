@@ -58,26 +58,11 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <label className="text-sm font-bold text-slate-800">
-          {t('optionInput.title')} <span className="text-rose-500">*</span>
-        </label>
-        <span
-          className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-            options.length >= maxLimit
-              ? 'bg-rose-100 text-rose-700'
-              : 'bg-indigo-50 text-indigo-700'
-          }`}
-        >
-          {t('optionInput.countLabel', { count: options.length, max: maxLimit })}
-        </span>
-      </div>
-
       <div className="space-y-2.5">
         {options.map((opt, index) => (
           <div
             key={opt.id}
-            className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100/80 p-2 rounded-xl border border-slate-200 transition-colors group"
+            className="flex items-center gap-1.5 sm:gap-2 bg-slate-50 hover:bg-slate-100/80 p-2 rounded-xl min-w-0 border border-slate-200 transition-colors group"
           >
             {/* Color dot & index badge */}
             <div
@@ -90,11 +75,10 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
             {/* Input field */}
             <input
               type="text"
-              required
               value={opt.text}
               onChange={e => handleTextChange(index, e.target.value)}
               placeholder={t('optionInput.placeholder', { index: index + 1 })}
-              className="flex-1 text-sm bg-white text-slate-900 placeholder:text-slate-400 px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none focus:bg-white transition-all shadow-sm"
+              className="flex-1 min-w-0 w-full text-sm bg-white text-slate-900 placeholder:text-slate-400 px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none focus:bg-white transition-all shadow-sm"
             />
 
             {/* Move Up/Down Buttons */}
@@ -103,7 +87,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
                 type="button"
                 disabled={index === 0}
                 onClick={() => handleMove(index, 'up')}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg disabled:opacity-25 disabled:hover:bg-transparent"
+                className="p-1 sm:p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg disabled:opacity-25 disabled:hover:bg-transparent"
                 title={t('optionInput.moveUp')}
               >
                 <ArrowUp className="w-4 h-4" />
@@ -112,7 +96,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
                 type="button"
                 disabled={index === options.length - 1}
                 onClick={() => handleMove(index, 'down')}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg disabled:opacity-25 disabled:hover:bg-transparent"
+                className="p-1 sm:p-1.5 text-slate-400 hover:text-slate-700 hover:bg-white rounded-lg disabled:opacity-25 disabled:hover:bg-transparent"
                 title={t('optionInput.moveDown')}
               >
                 <ArrowDown className="w-4 h-4" />
@@ -124,7 +108,7 @@ export const OptionInputList: React.FC<OptionInputListProps> = ({
               type="button"
               disabled={options.length <= 2}
               onClick={() => handleRemoveOption(index)}
-              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-400 shrink-0"
+              className="p-1 sm:p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-slate-400 shrink-0"
               title={options.length <= 2 ? t('optionInput.minRequired') : t('optionInput.remove')}
             >
               <Trash2 className="w-4 h-4" />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -8,17 +8,22 @@ import { PollOption, PollRound, Poll } from '../lib/types';
 import { OptionInputList } from '../components/poll/OptionInputList';
 import { ThemeSelector } from '../components/theme/ThemeSelector';
 import { Button } from '../components/common/Button';
-import { getOptionColor } from '../lib/runoffUtils';
 import {
-  Vote,
-  Calendar,
-  Layers,
-  Lock,
-  Globe,
-  LogIn,
-  AlertCircle,
-  Palette,
-} from 'lucide-react';
+  CreateModeTabs,
+  StepCard,
+  TitleInput,
+  AdvancedSettings,
+  SubHeading,
+  SubmitPanel,
+} from '../components/create/CreateFormParts';
+import { getOptionColor } from '../lib/runoffUtils';
+import { getTheme } from '../lib/themes';
+import { TranslationPath } from '../lib/i18n/translations';
+import { Lock, Globe, LogIn, AlertCircle, Palette, FileText, Clock, ListChecks } from 'lucide-react';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+const formatForInput = (d: Date) =>
+  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 export const CreatePollPage: React.FC = () => {
   const { currentUser, signInWithGoogle } = useAuth();
@@ -26,22 +31,8 @@ export const CreatePollPage: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
+  // Required
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-
-  // Default dates: start now, end 24 hours later
-  const now = new Date();
-  const defaultEnd = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const formatForInput = (d: Date) => {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-      d.getHours()
-    )}:${pad(d.getMinutes())}`;
-  };
-
-  const [startDate, setStartDate] = useState(formatForInput(now));
-  const [endDate, setEndDate] = useState(formatForInput(defaultEnd));
-
   // Options (starts with 3 options, up to 20)
   const [options, setOptions] = useState<PollOption[]>([
     { id: 'opt_1', text: '', color: getOptionColor(0) },
@@ -49,22 +40,46 @@ export const CreatePollPage: React.FC = () => {
     { id: 'opt_3', text: '', color: getOptionColor(2) },
   ]);
 
-  // Max choices
+  // Optional (advanced)
+  const [description, setDescription] = useState('');
+  // Default period: start now, end 24 hours later
+  const [startDate, setStartDate] = useState(() => formatForInput(new Date()));
+  const [endDate, setEndDate] = useState(() => formatForInput(new Date(Date.now() + 24 * 60 * 60 * 1000)));
   const [maxChoices, setMaxChoices] = useState<number>(1);
-
-  // Result visibility (default: false -> creator only)
   const [isPublicResult, setIsPublicResult] = useState<boolean>(false);
-
-  // Authentication requirement (default: true -> Google login required)
   const [requireAuth, setRequireAuth] = useState<boolean>(true);
-
-  // Voter names breakdown visibility (default: false -> hide who voted for what)
   const [showVoterNames, setShowVoterNames] = useState<boolean>(false);
-
-  // Design theme (default: 'default')
   const [theme, setTheme] = useState<string>('default');
 
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Empty option rows are ignored on submit
+  const filledOptions = options.filter(o => o.text.trim()).map(o => ({ ...o, text: o.text.trim() }));
+  const hasTitle = title.trim().length > 0;
+  const hasOptions = filledOptions.length >= 2;
+  const effectiveMaxChoices = Math.max(1, Math.min(maxChoices, Math.max(filledOptions.length, 1)));
+
+  const deadlineLabel = (() => {
+    const d = new Date(endDate);
+    if (isNaN(d.getTime())) return endDate;
+    return `${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  })();
+  const advancedSummary = [
+    t('scheduleEx.advancedSummaryDeadline', { date: deadlineLabel }),
+    maxChoices === 1 ? t('create.summarySingle') : t('create.summaryMulti', { count: maxChoices }),
+    requireAuth ? t('scheduleEx.advancedSummaryLogin') : t('scheduleEx.advancedSummaryNoLogin'),
+    isPublicResult ? t('create.summaryResultsPublic') : t('create.summaryResultsPrivate'),
+    showVoterNames ? t('create.summaryVoterNames') : null,
+    t('scheduleEx.advancedSummaryTheme', { name: t(getTheme(theme).nameKey as TranslationPath) }),
+  ]
+    .filter(Boolean)
+    .join(' ・ ');
+
+  const failAdvanced = (message: string) => {
+    setShowAdvanced(true);
+    showToast('error', message);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,23 +88,14 @@ export const CreatePollPage: React.FC = () => {
       showToast('error', t('create.toastLoginReq'));
       return;
     }
-
-    if (!title.trim()) {
+    if (!hasTitle) {
       showToast('error', t('create.toastTitleReq'));
       return;
     }
-
-    const filledOptions = options.map(o => ({ ...o, text: o.text.trim() }));
-    if (filledOptions.some(o => !o.text)) {
-      showToast('error', t('create.toastOptionsReq'));
-      return;
-    }
-
     if (filledOptions.length < 2) {
       showToast('error', t('create.toastMinOptions'));
       return;
     }
-
     if (filledOptions.length > 20) {
       showToast('error', t('create.toastMaxOptions'));
       return;
@@ -97,15 +103,8 @@ export const CreatePollPage: React.FC = () => {
 
     const startTimestamp = new Date(startDate).getTime();
     const endTimestamp = new Date(endDate).getTime();
-    if (isNaN(startTimestamp) || isNaN(endTimestamp)) {
-      showToast('error', t('create.toastInvalidDates'));
-      return;
-    }
-
-    if (endTimestamp <= startTimestamp) {
-      showToast('error', t('create.toastEndDateFuture'));
-      return;
-    }
+    if (isNaN(startTimestamp) || isNaN(endTimestamp)) return failAdvanced(t('create.toastInvalidDates'));
+    if (endTimestamp <= startTimestamp) return failAdvanced(t('create.toastEndDateFuture'));
 
     try {
       setIsSubmitting(true);
@@ -145,46 +144,28 @@ export const CreatePollPage: React.FC = () => {
     }
   };
 
+  const inputCls =
+    'w-full text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs';
+
+  // Choices: 1..min(10, filled options) (at least 1)
+  const maxChoiceCandidates = Array.from({ length: Math.max(1, Math.min(10, filledOptions.length)) }, (_, i) => i + 1);
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      {/* Mode Switch Tabs at Top */}
-      <div className="flex items-center gap-2 mb-6 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
-        <button
-          type="button"
-          className="flex-1 sm:flex-initial sm:min-w-[117px] flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-white text-rose-600 shadow-xs cursor-default"
-        >
-          <Vote className="w-3.5 h-3.5" />
-          <span>{t('schedule.tabPoll')}</span>
-        </button>
-        <Link
-          to="/create-schedule"
-          className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-indigo-600 transition-colors"
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>{t('schedule.tabScheduleAdjust')}</span>
-        </Link>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <CreateModeTabs active="poll" />
+
+      <div className="mb-6">
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{t('create.title')}</h1>
+        <p className="text-sm text-slate-500 mt-1">{t('create.subtitle')}</p>
       </div>
 
-      {/* Page Header */}
-      <div className="mb-8 text-center sm:text-left">
-        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-          {t('create.title')}
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
-          {t('create.subtitle')}
-        </p>
-      </div>
-
-      {/* Login reminder if not logged in */}
       {!currentUser && (
         <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-            <div className="text-xs text-amber-900">
+            <div className="text-sm text-amber-900">
               <span className="font-bold">{t('create.loginRequiredTitle')}</span>
-              <p className="text-amber-700 mt-0.5">
-                {t('create.loginRequiredDesc')}
-              </p>
+              <p className="text-amber-700 mt-0.5">{t('create.loginRequiredDesc')}</p>
             </div>
           </div>
           <Button
@@ -200,269 +181,145 @@ export const CreatePollPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Creation Form */}
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
-        <div className="space-y-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm min-w-0">
-        {/* Section 1: Basic Information */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-            <Vote className="w-4 h-4 text-indigo-600" />
-            <span>{t('create.basicInfo')}</span>
-          </h3>
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+        {/* ===== Main column ===== */}
+        <div className="space-y-6 min-w-0">
+          <StepCard step={1} title={t('create.stepTitle')} htmlFor="pollTitle">
+            <TitleInput id="pollTitle" value={title} onChange={setTitle} placeholder={t('create.pollTitlePlaceholder')} />
+          </StepCard>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              {t('create.pollTitle')} <span className="text-rose-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={t('create.pollTitlePlaceholder')}
-              className="w-full text-sm sm:text-base px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">
-              {t('create.pollDesc')}
-            </label>
-            <textarea
-              rows={3}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder={t('create.pollDescPlaceholder')}
-              className="w-full text-xs sm:text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all shadow-sm"
-            />
-          </div>
-        </div>
-
-        {/* Section 2: Voting Period */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-indigo-600" />
-            <span>{t('create.periodSettings')}</span>
-          </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                {t('create.startDate')} <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white shadow-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1.5">
-                {t('create.endDate')} <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={endDate}
-                onChange={e => setEndDate(e.target.value)}
-                className="w-full text-xs sm:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white shadow-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Section 3: Options List (Up to 20) */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-indigo-600" />
-            <span>{t('create.optionsSettings')}</span>
-          </h3>
-
-          <OptionInputList options={options} onChange={setOptions} maxLimit={20} />
-        </div>
-
-        {/* Section 4: Selection Limits and Privacy */}
-        <div className="space-y-4">
-          <h3 className="text-base font-bold text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
-            <Lock className="w-4 h-4 text-indigo-600" />
-            <span>{t('create.rulesSettings')}</span>
-          </h3>
-
-          {/* Max Choices Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-slate-700">
-                {t('create.maxChoicesLabel')} <span className="text-rose-500">*</span>
-              </label>
-              <span className="text-xs text-slate-500">
-                {maxChoices === 1
-                  ? t('create.singleChoiceDesc')
-                  : t('create.multiChoicesDesc', { max: maxChoices })}
-              </span>
-            </div>
-
-            <select
-              value={maxChoices}
-              onChange={e => setMaxChoices(Number(e.target.value))}
-              className="w-full text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium shadow-sm"
-            >
-              <option value={1}>{t('create.singleChoiceOption')}</option>
-              {options.length >= 2 && <option value={2}>{t('create.multiChoiceOption', { count: 2 })}</option>}
-              {options.length >= 3 && <option value={3}>{t('create.multiChoiceOption', { count: 3 })}</option>}
-              {options.length >= 4 && <option value={4}>{t('create.multiChoiceOption', { count: 4 })}</option>}
-              {options.length >= 5 && <option value={5}>{t('create.multiChoiceOption', { count: 5 })}</option>}
-              {options.length > 5 && (
-                <option value={Math.min(10, options.length)}>
-                  {t('create.multiChoiceOption', { count: Math.min(10, options.length) })}
-                </option>
-              )}
-            </select>
-          </div>
-
-          {/* Result Visibility Toggle */}
-          <div className="pt-2">
-            <label className="block text-xs font-bold text-slate-700 mb-2">
-              {t('create.resultVisibility')}
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                onClick={() => setIsPublicResult(false)}
-                className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                  !isPublicResult
-                    ? 'border-indigo-600 bg-indigo-50/60 font-semibold shadow-sm'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-2 text-xs text-slate-900">
-                  <Lock className="w-4 h-4 text-indigo-600" />
-                  <span className="font-bold">{t('create.adminOnlyTitle')}</span>
-                </div>
-                <p className="text-2xs text-slate-500 mt-1">
-                  {t('create.adminOnlyDesc')}
-                </p>
-              </div>
-
-              <div
-                onClick={() => setIsPublicResult(true)}
-                className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
-                  isPublicResult
-                    ? 'border-indigo-600 bg-indigo-50/60 font-semibold shadow-sm'
-                    : 'border-slate-200 bg-white hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-2 text-xs text-slate-900">
-                  <Globe className="w-4 h-4 text-emerald-600" />
-                  <span className="font-bold">{t('create.publicResultTitle')}</span>
-                </div>
-                <p className="text-2xs text-slate-500 mt-1">
-                  {t('create.publicResultDesc')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Login Requirement Setting */}
-          <div className="pt-2">
-            <label className="block text-xs font-bold text-slate-700 mb-2">
-              {t('create.voterAuth')}
-            </label>
-            <div
-              onClick={() => setRequireAuth(!requireAuth)}
-              className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3.5 select-none"
-            >
-              <input
-                type="checkbox"
-                id="noLoginCheckbox"
-                checked={!requireAuth}
-                onChange={e => setRequireAuth(!e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
-              />
-              <div className="flex-1 text-xs">
-                <label
-                  htmlFor="noLoginCheckbox"
-                  className="font-bold text-slate-900 cursor-pointer flex items-center gap-1.5"
-                >
-                  <span>{t('create.noLoginCheckbox')}</span>
-                </label>
-                <p className="text-slate-500 mt-1 leading-relaxed">
-                  {t('create.noLoginCheckboxDesc')}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Voter Names Breakdown Setting */}
-          <div className="pt-2">
-            <label className="block text-xs font-bold text-slate-700 mb-2">
-              {t('create.voterNamesVisibility')}
-            </label>
-            <div
-              onClick={() => setShowVoterNames(!showVoterNames)}
-              className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3.5 select-none"
-            >
-              <input
-                type="checkbox"
-                id="showVoterNamesCheckbox"
-                checked={showVoterNames}
-                onChange={e => setShowVoterNames(e.target.checked)}
-                className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
-              />
-              <div className="flex-1 text-xs">
-                <label
-                  htmlFor="showVoterNamesCheckbox"
-                  className="font-bold text-slate-900 cursor-pointer flex items-center gap-1.5"
-                >
-                  <span>{t('create.showVoterNamesCheckbox')}</span>
-                </label>
-                <p className="text-slate-500 mt-1 leading-relaxed">
-                  {t('create.showVoterNamesDesc')}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Section 5: Page Design Theme (20+ variations) */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Palette className="w-4 h-4 text-indigo-600" />
-              <span>{t('theme.sectionTitle')}</span>
-            </h3>
-            <span className="text-xs text-slate-400">
-              全22種類
-            </span>
-          </div>
-          <p className="text-xs text-slate-500">
-            {t('theme.sectionDesc')}
-          </p>
-
-          <ThemeSelector selectedThemeId={theme} onSelectTheme={setTheme} />
-        </div>
-
-        </div>
-
-        {/* Submit action (sticky sidebar on desktop, sticky bar on mobile) */}
-        <aside className="sticky bottom-3 lg:top-20 lg:bottom-auto z-20 bg-white/95 backdrop-blur p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-lg lg:shadow-sm space-y-3 min-w-0">
-          <dl className="hidden lg:grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
-            <dt className="text-slate-500">{t('create.optionsSettings')}</dt>
-            <dd className="font-bold text-slate-900 text-right">{options.filter(o => o.text.trim()).length} / 20</dd>
-            <dt className="text-slate-500">{t('create.endDate')}</dt>
-            <dd className="font-bold text-slate-900 text-right">{endDate.replace('T', ' ')}</dd>
-          </dl>
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            isLoading={isSubmitting}
-            disabled={!currentUser}
-            className="w-full"
+          <StepCard
+            step={2}
+            title={t('create.stepOptions')}
+            aside={<span className="text-sm font-bold text-indigo-600">{filledOptions.length} / 20</span>}
           >
-            {t('create.submitButton')}
-          </Button>
-          <p className="text-xs text-slate-500">{t('create.footerNote')}</p>
+            <OptionInputList options={options} onChange={setOptions} maxLimit={20} />
+          </StepCard>
+
+          <AdvancedSettings
+            open={showAdvanced}
+            onToggle={() => setShowAdvanced(v => !v)}
+            summary={advancedSummary}
+            description={t('create.advancedDesc')}
+          >
+            {/* Description */}
+            <div className="space-y-2">
+              <SubHeading icon={<FileText className="w-4 h-4 text-indigo-600" />} label={t('create.sectionDescription')} />
+              <textarea
+                rows={3}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder={t('create.pollDescPlaceholder')}
+                className={inputCls}
+              />
+            </div>
+
+            {/* Voting period */}
+            <div className="space-y-2">
+              <SubHeading icon={<Clock className="w-4 h-4 text-indigo-600" />} label={t('create.sectionPeriod')} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">
+                    {t('create.endDate')} <span className="text-rose-500">*</span>
+                  </label>
+                  <input type="datetime-local" required value={endDate} onChange={e => setEndDate(e.target.value)} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 mb-1">{t('create.startDate')}</label>
+                  <input type="datetime-local" required value={startDate} onChange={e => setStartDate(e.target.value)} className={inputCls} />
+                </div>
+              </div>
+            </div>
+
+            {/* Max choices */}
+            <div className="space-y-2">
+              <SubHeading icon={<ListChecks className="w-4 h-4 text-indigo-600" />} label={t('create.sectionMaxChoices')} />
+              <select
+                value={effectiveMaxChoices}
+                onChange={e => setMaxChoices(Number(e.target.value))}
+                aria-label={t('create.maxChoicesLabel')}
+                className={`${inputCls} md:w-80 font-medium`}
+              >
+                {maxChoiceCandidates.map(n => (
+                  <option key={n} value={n}>
+                    {n === 1 ? t('create.singleChoiceOption') : t('create.multiChoiceOption', { count: n })}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Voters & visibility */}
+            <div className="space-y-3">
+              <SubHeading icon={<Lock className="w-4 h-4 text-indigo-600" />} label={t('create.sectionRespondents')} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { value: false, icon: <Lock className="w-4 h-4 text-indigo-600" />, title: t('create.adminOnlyTitle'), desc: t('create.adminOnlyDesc') },
+                  { value: true, icon: <Globe className="w-4 h-4 text-emerald-600" />, title: t('create.publicResultTitle'), desc: t('create.publicResultDesc') },
+                ].map(opt => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    aria-pressed={isPublicResult === opt.value}
+                    onClick={() => setIsPublicResult(opt.value)}
+                    className={`text-left p-4 rounded-2xl border-2 cursor-pointer transition-all ${
+                      isPublicResult === opt.value ? 'border-indigo-600 bg-indigo-50/60 shadow-sm' : 'border-slate-200 bg-white hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                      {opt.icon}
+                      {opt.title}
+                    </span>
+                    <span className="block text-xs text-slate-500 mt-1">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+              <label className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3 select-none">
+                <input
+                  type="checkbox"
+                  checked={!requireAuth}
+                  onChange={e => setRequireAuth(!e.target.checked)}
+                  className="mt-0.5 w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="flex-1 text-sm">
+                  <span className="font-bold text-slate-900 block">{t('create.noLoginCheckbox')}</span>
+                  <span className="text-slate-500 mt-1 block leading-relaxed">{t('create.noLoginCheckboxDesc')}</span>
+                </span>
+              </label>
+              <label className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3 select-none">
+                <input
+                  type="checkbox"
+                  checked={showVoterNames}
+                  onChange={e => setShowVoterNames(e.target.checked)}
+                  className="mt-0.5 w-5 h-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="flex-1 text-sm">
+                  <span className="font-bold text-slate-900 block">{t('create.showVoterNamesCheckbox')}</span>
+                  <span className="text-slate-500 mt-1 block leading-relaxed">{t('create.showVoterNamesDesc')}</span>
+                </span>
+              </label>
+            </div>
+
+            {/* Theme */}
+            <div className="space-y-2">
+              <SubHeading icon={<Palette className="w-4 h-4 text-indigo-600" />} label={t('scheduleEx.sectionTheme')} />
+              <p className="text-xs text-slate-500">{t('theme.sectionDesc')}</p>
+              <ThemeSelector selectedThemeId={theme} onSelectTheme={setTheme} />
+            </div>
+          </AdvancedSettings>
+        </div>
+
+        {/* ===== Sidebar (sticky on desktop) ===== */}
+        <aside className="lg:sticky lg:top-20 space-y-4 min-w-0">
+          <SubmitPanel
+            checks={[
+              { ok: hasTitle, label: t('create.checklistTitle') },
+              { ok: hasOptions, label: t('create.checklistOptions') },
+            ]}
+            submitLabel={t('create.submitButton')}
+            note={t('create.footerNote')}
+            isLoading={isSubmitting}
+            disabled={!currentUser || !hasTitle || !hasOptions}
+          />
         </aside>
       </form>
     </div>

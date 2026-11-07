@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -24,20 +24,22 @@ import { getTheme } from '../lib/themes';
 import { TranslationPath } from '../lib/i18n/translations';
 import { ScheduleCandidatePicker, CandidateDraftList } from '../components/schedule/ScheduleCandidatePicker';
 import { ThemeSelector } from '../components/theme/ThemeSelector';
+import {
+  CreateModeTabs,
+  StepCard,
+  TitleInput,
+  AdvancedSettings,
+  SubHeading,
+  SubmitPanel,
+} from '../components/create/CreateFormParts';
 import { Button } from '../components/common/Button';
 import {
-  Calendar,
   LogIn,
   AlertCircle,
   Lock,
   Globe,
-  Vote as VoteIcon,
   Palette,
   MapPin,
-  ChevronDown,
-  Settings2,
-  CheckCircle2,
-  Circle,
   FileText,
   Users,
   Clock,
@@ -179,36 +181,9 @@ export const CreateSchedulePage: React.FC = () => {
 
   const inputCls =
     'w-full text-sm px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none shadow-xs';
-  const subHeading = (icon: React.ReactNode, label: string) => (
-    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
-      {icon}
-      <span>{label}</span>
-    </h4>
-  );
-
-  const ChecklistItem: React.FC<{ ok: boolean; label: string }> = ({ ok, label }) => (
-    <li className={`flex items-center gap-2 text-sm ${ok ? 'text-emerald-700' : 'text-slate-600'}`}>
-      {ok ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Circle className="w-4 h-4 text-slate-300" />}
-      <span className={ok ? 'line-through decoration-emerald-300' : 'font-semibold'}>{label}</span>
-    </li>
-  );
-
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      {/* Mode Switch Tabs */}
-      <div className="flex items-center gap-2 mb-5 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-full sm:w-fit">
-        <Link
-          to="/create"
-          className="flex-1 sm:flex-initial sm:min-w-[129px] flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
-        >
-          <VoteIcon className="w-4 h-4" />
-          <span>{t('schedule.tabPoll')}</span>
-        </Link>
-        <span className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-white text-indigo-600 shadow-xs">
-          <Calendar className="w-4 h-4" />
-          <span>{t('schedule.tabScheduleAdjust')}</span>
-        </span>
-      </div>
+      <CreateModeTabs active="schedule" />
 
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">{t('schedule.createTitle')}</h1>
@@ -241,67 +216,29 @@ export const CreateSchedulePage: React.FC = () => {
         {/* ===== Main column ===== */}
         <div className="space-y-6 min-w-0">
           {/* Step 1: Event name (required) */}
-          <section className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
-            <label htmlFor="schedTitle" className="flex items-center gap-2 text-base font-black text-slate-900 mb-3">
-              <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm flex items-center justify-center">1</span>
-              <span>{t('scheduleEx.createStepTitle')}</span>
-              <span className="text-rose-500">*</span>
-            </label>
-            <input
-              id="schedTitle"
-              type="text"
-              required
-              autoFocus
-              maxLength={100}
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder={t('schedule.eventTitlePlaceholder')}
-              className="w-full text-base sm:text-lg px-4 py-3 rounded-2xl border-2 border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:outline-none transition-all"
-            />
-          </section>
+          <StepCard step={1} title={t('scheduleEx.createStepTitle')} htmlFor="schedTitle">
+            <TitleInput id="schedTitle" value={title} onChange={setTitle} placeholder={t('schedule.eventTitlePlaceholder')} />
+          </StepCard>
 
           {/* Step 2: Candidate dates (required) */}
-          <section className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="flex items-center gap-2 text-base font-black text-slate-900">
-                <span className="w-7 h-7 rounded-full bg-indigo-600 text-white text-sm flex items-center justify-center">2</span>
-                <span>{t('scheduleEx.createStepDates')}</span>
-                <span className="text-rose-500">*</span>
-              </h2>
-              <span className="text-sm font-bold text-indigo-600">
-                {t('schedule.candidateCount', { count: drafts.length })}
-              </span>
-            </div>
+          <StepCard
+            step={2}
+            title={t('scheduleEx.createStepDates')}
+            aside={<span className="text-sm font-bold text-indigo-600">{t('schedule.candidateCount', { count: drafts.length })}</span>}
+          >
             <ScheduleCandidatePicker value={drafts} onChange={setDrafts} listClassName="lg:hidden" />
-          </section>
+          </StepCard>
 
           {/* Advanced settings (optional, collapsed) */}
-          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowAdvanced(v => !v)}
-              aria-expanded={showAdvanced}
-              className="w-full flex items-start justify-between gap-3 p-5 sm:p-6 text-left hover:bg-slate-50/70 cursor-pointer"
-            >
-              <span className="min-w-0">
-                <span className="flex items-center gap-2 text-base font-black text-slate-900">
-                  <Settings2 className="w-5 h-5 text-indigo-600" />
-                  {t('scheduleEx.advancedTitle')}
-                </span>
-                <span className="block text-sm text-slate-500 mt-1">
-                  {showAdvanced ? t('scheduleEx.advancedDesc') : advancedSummary}
-                </span>
-              </span>
-              <ChevronDown
-                className={`w-5 h-5 text-slate-500 shrink-0 mt-0.5 transition-transform ${showAdvanced ? 'rotate-180' : ''}`}
-              />
-            </button>
-
-            {showAdvanced && (
-              <div className="px-5 sm:px-6 pb-6 space-y-7 border-t border-slate-100 pt-5">
+          <AdvancedSettings
+            open={showAdvanced}
+            onToggle={() => setShowAdvanced(v => !v)}
+            summary={advancedSummary}
+            description={t('scheduleEx.advancedDesc')}
+          >
                 {/* Description */}
                 <div className="space-y-2">
-                  {subHeading(<FileText className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionDescription'))}
+                  <SubHeading icon={<FileText className="w-4 h-4 text-indigo-600" />} label={t('scheduleEx.sectionDescription')} />
                   <textarea
                     rows={3}
                     value={description}
@@ -313,7 +250,7 @@ export const CreateSchedulePage: React.FC = () => {
 
                 {/* Event meta */}
                 <div className="space-y-3">
-                  {subHeading(<MapPin className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionEventMeta'))}
+                  <SubHeading icon={<MapPin className="w-4 h-4 text-indigo-600" />} label={t('scheduleEx.sectionEventMeta')} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-600 mb-1">{t('scheduleEx.locationLabel')}</label>
@@ -346,7 +283,7 @@ export const CreateSchedulePage: React.FC = () => {
 
                 {/* Capacity */}
                 <div className="space-y-2">
-                  {subHeading(<Users className="w-4 h-4 text-indigo-600" />, t('scheduleEx.capacityLabel'))}
+                  <SubHeading icon={<Users className="w-4 h-4 text-indigo-600" />} label={t('scheduleEx.capacityLabel')} />
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -372,7 +309,7 @@ export const CreateSchedulePage: React.FC = () => {
 
                 {/* Response period */}
                 <div className="space-y-2">
-                  {subHeading(<Clock className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionPeriod'))}
+                  <SubHeading icon={<Clock className="w-4 h-4 text-indigo-600" />} label={t('scheduleEx.sectionPeriod')} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-bold text-slate-600 mb-1">
@@ -389,7 +326,7 @@ export const CreateSchedulePage: React.FC = () => {
 
                 {/* Respondents & visibility */}
                 <div className="space-y-3">
-                  {subHeading(<Lock className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionRespondents'))}
+                  <SubHeading icon={<Lock className="w-4 h-4 text-indigo-600" />} label={t('scheduleEx.sectionRespondents')} />
                   <label className="p-4 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100/80 transition-all cursor-pointer flex items-start gap-3 select-none">
                     <input
                       type="checkbox"
@@ -440,13 +377,11 @@ export const CreateSchedulePage: React.FC = () => {
 
                 {/* Theme */}
                 <div className="space-y-2">
-                  {subHeading(<Palette className="w-4 h-4 text-indigo-600" />, t('scheduleEx.sectionTheme'))}
+                  <SubHeading icon={<Palette className="w-4 h-4 text-indigo-600" />} label={t('scheduleEx.sectionTheme')} />
                   <p className="text-xs text-slate-500">{t('theme.sectionDesc')}</p>
                   <ThemeSelector selectedThemeId={theme} onSelectTheme={setTheme} />
                 </div>
-              </div>
-            )}
-          </section>
+          </AdvancedSettings>
         </div>
 
         {/* ===== Sidebar (sticky on desktop) ===== */}
@@ -462,24 +397,16 @@ export const CreateSchedulePage: React.FC = () => {
             />
           </div>
 
-          <div className="sticky bottom-3 lg:static z-20 bg-white/95 backdrop-blur p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-lg lg:shadow-sm space-y-3">
-            <p className="text-sm font-black text-slate-800">{t('scheduleEx.checklistTitle')}</p>
-            <ul className="space-y-1.5">
-              <ChecklistItem ok={hasTitle} label={t('scheduleEx.checklistTitleMissing')} />
-              <ChecklistItem ok={hasDates} label={t('scheduleEx.checklistDatesMissing')} />
-            </ul>
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              isLoading={isSubmitting}
-              disabled={!currentUser || !hasTitle || !hasDates}
-              className="w-full shadow-md"
-            >
-              {t('schedule.submitBtn')}
-            </Button>
-            <p className="text-xs text-slate-500">{t('schedule.footerNote')}</p>
-          </div>
+          <SubmitPanel
+            checks={[
+              { ok: hasTitle, label: t('scheduleEx.checklistTitleMissing') },
+              { ok: hasDates, label: t('scheduleEx.checklistDatesMissing') },
+            ]}
+            submitLabel={t('schedule.submitBtn')}
+            note={t('schedule.footerNote')}
+            isLoading={isSubmitting}
+            disabled={!currentUser || !hasTitle || !hasDates}
+          />
         </aside>
       </form>
     </div>
