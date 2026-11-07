@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTranslation } from '../contexts/LanguageContext';
@@ -63,6 +63,7 @@ import { AddScheduleOptionsModal } from '../components/schedule/AddScheduleOptio
 import { EventMetaList, DecisionBanner } from '../components/schedule/ScheduleEventDetails';
 import { CountdownTimer } from '../components/poll/CountdownTimer';
 import { ShareModal } from '../components/poll/ShareModal';
+import { SharePanel } from '../components/poll/SharePanel';
 import { RunoffWizardModal } from '../components/poll/RunoffWizardModal';
 import { DeletePollModal } from '../components/poll/DeletePollModal';
 import { RoundSelector } from '../components/results/RoundSelector';
@@ -97,6 +98,8 @@ export const PollVotingPage: React.FC = () => {
   const { showToast } = useToast();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const justCreated = searchParams.get('created') === '1';
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [allRounds, setAllRounds] = useState<PollRound[]>([]);
@@ -812,10 +815,11 @@ export const PollVotingPage: React.FC = () => {
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
             <Button
-              variant="outline"
+              variant="primary"
               size="sm"
               onClick={() => setIsShareModalOpen(true)}
-              leftIcon={<Share2 className="w-3.5 h-3.5" />}
+              leftIcon={<Share2 className="w-4 h-4" />}
+              className="px-4"
             >
               {t('voting.shareBtn')}
             </Button>
@@ -853,6 +857,19 @@ export const PollVotingPage: React.FC = () => {
             selectedRoundNumber={viewRoundNumber}
             currentActiveRoundNumber={poll.currentRound}
             onSelectRound={setViewRoundNumber}
+          />
+        )}
+
+        {/* Right after creation: make "share the URL" the obvious next step */}
+        {justCreated && isAdmin && (
+          <SharePanel
+            variant="hero"
+            pollId={poll.id}
+            pollTitle={poll.title}
+            isSchedule={isScheduleMode}
+            requireAuth={poll.requireAuth !== false}
+            onShowQr={() => setIsShareModalOpen(true)}
+            onDismiss={() => setSearchParams({}, { replace: true })}
           />
         )}
 
@@ -953,6 +970,17 @@ export const PollVotingPage: React.FC = () => {
         />
       )}
 
+        {/* Organizer: always-visible share card */}
+        {isAdmin && !justCreated && (
+          <SharePanel
+            variant="card"
+            pollId={poll.id}
+            pollTitle={poll.title}
+            isSchedule={isScheduleMode}
+            requireAuth={poll.requireAuth !== false}
+            onShowQr={() => setIsShareModalOpen(true)}
+          />
+        )}
         </aside>
 
         {/* Main column: response form */}

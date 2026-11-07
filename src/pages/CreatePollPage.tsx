@@ -137,8 +137,7 @@ export const CreatePollPage: React.FC = () => {
       };
 
       const pollId = await createPoll(pollData, initialRound);
-      showToast('success', t('create.toastSuccess'));
-      navigate(`/poll/${pollId}`);
+      navigate(`/poll/${pollId}?created=1`);
     } catch (err: any) {
       console.error('Failed to create poll:', err);
       showToast('error', t('create.toastFailed') + (err.message || ''));

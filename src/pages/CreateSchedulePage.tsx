@@ -168,8 +168,7 @@ export const CreateSchedulePage: React.FC = () => {
       };
 
       const pollId = await createPoll(pollData, initialRound);
-      showToast('success', t('schedule.toastSuccess'));
-      navigate(`/poll/${pollId}`);
+      navigate(`/poll/${pollId}?created=1`);
     } catch (err: any) {
       console.error('Failed to create schedule poll:', err);
       showToast('error', t('create.toastFailed') + (err.message || ''));
