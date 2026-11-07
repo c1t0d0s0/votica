@@ -3,6 +3,7 @@ import {
   THEME_CATEGORIES,
   ThemeCategory,
   getTheme,
+  getDisplayTheme,
   getThemesByCategory,
 } from '../../lib/themes';
 import { useTranslation } from '../../contexts/LanguageContext';
@@ -21,6 +22,10 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   const [activeCategory, setActiveCategory] = useState<ThemeCategory>('all');
 
   const currentTheme = getTheme(selectedThemeId);
+  // Preview renders exactly like the poll page: dark themes via the .palette-dark scope,
+  // light themes with the original palette (not inverted by the site-wide dark mode).
+  const previewTheme = getDisplayTheme(selectedThemeId);
+  const previewScopeClass = previewTheme.isDark ? previewTheme.scopeClass : 'keep-palette';
   const displayedThemes = getThemesByCategory(activeCategory);
 
   const getThemeName = (theme: typeof currentTheme) => {
@@ -148,27 +153,26 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
 
         {/* Mini Preview Mockup */}
         <div
-          className={`p-4 rounded-2xl border transition-all ${currentTheme.classes.pageBg} ${
-            currentTheme.isDark ? 'border-slate-800' : 'border-slate-200'
-          }`}
+          className={`p-4 rounded-2xl border transition-all ${previewTheme.classes.pageBg} ${previewTheme.classes.cardBorder} ${previewScopeClass}`}
+          style={previewTheme.scopeStyle as React.CSSProperties}
         >
           <div className="space-y-2.5">
             {/* Header snippet */}
             <div className="flex items-center justify-between">
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold border ${currentTheme.classes.accentBadge}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold border ${previewTheme.classes.accentBadge}`}
               >
                 <Sparkles className="w-3 h-3" />
                 <span>{getThemeName(currentTheme)}</span>
               </span>
-              <span className={`text-2xs font-bold ${currentTheme.classes.mutedText}`}>
-                {currentTheme.isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}
+              <span className={`text-2xs font-bold ${previewTheme.classes.mutedText}`}>
+                {previewTheme.isDark ? '🌙 Dark Mode' : '☀️ Light Mode'}
               </span>
             </div>
 
             {/* Mock option card */}
             <div
-              className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-between ${currentTheme.classes.selectedOption}`}
+              className={`p-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-between ${previewTheme.classes.selectedOption}`}
             >
               <div className="flex items-center gap-2">
                 <span className="w-3.5 h-3.5 rounded-full bg-current opacity-80" />
@@ -181,7 +185,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
             <div className="flex items-center justify-end pt-1">
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-default shadow-xs transition-all ${currentTheme.classes.primaryBtn}`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold cursor-default shadow-xs transition-all ${previewTheme.classes.primaryBtn}`}
               >
                 投票ボタン
               </button>

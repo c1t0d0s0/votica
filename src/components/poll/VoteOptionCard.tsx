@@ -1,6 +1,6 @@
 import React from 'react';
 import { PollOption } from '../../lib/types';
-import { ThemeDefinition } from '../../lib/themes';
+import { ThemeDefinition, DisplayTheme } from '../../lib/themes';
 import { Check } from 'lucide-react';
 
 interface VoteOptionCardProps {
@@ -30,8 +30,13 @@ export const VoteOptionCard: React.FC<VoteOptionCardProps> = ({
     ? theme.classes.optionCard
     : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50/80 text-slate-800';
 
+  // On dark-theme pages (.palette-dark scope) the palette is mirrored, so dark-only classes use
+  // their mirrored shades (written literally so Tailwind compiles them; see getDisplayTheme).
+  const isPaletteDark = Boolean(theme && 'scopeClass' in theme && (theme as DisplayTheme).scopeClass);
+  const dark = (raw: string, mirrored: string) => (isPaletteDark ? mirrored : raw);
+
   const checkboxSelectedClass = theme?.isDark
-    ? 'border-cyan-400 bg-cyan-500 text-slate-950'
+    ? dark('border-cyan-400 bg-cyan-500 text-slate-950', 'border-cyan-400 bg-cyan-500 text-slate-50')
     : 'border-indigo-600 bg-indigo-600 text-white';
 
   return (
@@ -71,13 +76,13 @@ export const VoteOptionCard: React.FC<VoteOptionCardProps> = ({
       {/* Option Text */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={`text-xs font-bold ${theme?.isDark ? 'text-slate-400' : 'text-slate-400'}`}>#{index + 1}</span>
+          <span className={`text-xs font-bold ${theme?.isDark ? dark('text-slate-400', 'text-slate-600') : 'text-slate-400'}`}>#{index + 1}</span>
           <h4
             className={`text-base font-semibold leading-snug break-words ${
               theme?.isDark
                 ? isSelected
                   ? 'text-white font-bold'
-                  : 'text-slate-100'
+                  : dark('text-slate-100', 'text-slate-900')
                 : isSelected
                 ? 'text-indigo-950 font-bold'
                 : 'text-slate-800'
@@ -87,7 +92,7 @@ export const VoteOptionCard: React.FC<VoteOptionCardProps> = ({
           </h4>
         </div>
         {option.description && (
-          <p className={`text-xs mt-1 leading-relaxed ${theme?.isDark ? 'text-slate-300' : 'text-slate-500'}`}>
+          <p className={`text-xs mt-1 leading-relaxed ${theme?.isDark ? dark('text-slate-300', 'text-slate-700') : 'text-slate-500'}`}>
             {option.description}
           </p>
         )}
