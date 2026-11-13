@@ -119,12 +119,12 @@ This repository includes `.github/workflows/deploy.yml` for automated CI/CD depl
      - `VITE_FIREBASE_STORAGE_BUCKET`
      - `VITE_FIREBASE_MESSAGING_SENDER_ID`
      - `VITE_FIREBASE_APP_ID`
-2. **Configure Google Analytics Tag ID (Variables, Optional)**:
+2. **Configure Google Tag Manager Tag ID (Variables, Optional)**:
    - Switch to the **Variables** tab under **Settings** -> **Secrets and variables** -> **Actions**.
    - Click **New repository variable** and add:
-     - Name: `VITE_GA_MEASUREMENT_ID`
-     - Value: `G-XXXXXXXXXX` (Your Google Analytics 4 Measurement ID / Tag ID)
-   - *Note: If configured, the Google Analytics tracking script will automatically be injected during the build. If omitted, no tracking scripts are embedded.*
+     - Name: `GTM_ID`
+     - Value: `GTM-XXXXXXX` (Google Tag Manager Container ID)
+   - *Note: If configured, Google Tag Manager scripts are automatically injected during build. If omitted, no tracking scripts are embedded.*
 3. **Enable GitHub Pages**:
    - Go to **Settings** -> **Pages** and set **Source** to **GitHub Actions** under "Build and deployment".
 4. **Deploy**:

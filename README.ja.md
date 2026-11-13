@@ -120,12 +120,12 @@ firebase deploy --only firestore:indexes
      - `VITE_FIREBASE_STORAGE_BUCKET`
      - `VITE_FIREBASE_MESSAGING_SENDER_ID`
      - `VITE_FIREBASE_APP_ID`
-2. **Google Analytics タグID (Variables) の設定 (任意)**:
+2. **Google Tag Manager タグID (Variables) の設定 (任意)**:
    - 同じ「Actions」設定画面内の「**Variables**」タブに切り替えます。
    - 「New repository variable」をクリックし、以下を登録します:
-     - Name: `VITE_GA_MEASUREMENT_ID`
-     - Value: `G-XXXXXXXXXX` (Google Analytics 4 の測定ID / タグID)
-   - ※ 設定されている場合のみ、デプロイビルド時に Google Analytics タグが自動的に埋め込まれます（未設定時はタグが挿入されず安全です）。
+     - Name: `GTM_ID`
+     - Value: `GTM-XXXXXXX` (Google Tag Manager のコンテナID)
+   - ※ 設定されている場合のみ、デプロイビルド時に Google Tag Manager タグが自動的に埋め込まれます（未設定時はタグが挿入されず安全です）。
 3. **GitHub Pages の有効化**:
    - GitHub リポジトリの「**Settings**」->「**Pages**」を開き、「Build and deployment」の Source を **GitHub Actions** に設定します。
 4. **デプロイの実行**:

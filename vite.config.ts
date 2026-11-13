@@ -1,50 +1,27 @@
-import { defineConfig, loadEnv, Plugin } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import { googleTrackingPlugin } from './src/lib/trackingPlugin.ts';
 
-function googleAnalyticsPlugin(gaId?: string): Plugin {
-  const trimmedGaId = gaId?.trim();
-  return {
-    name: 'google-analytics',
-    transformIndexHtml(html) {
-      if (!trimmedGaId) return html;
-      return {
-        html,
-        tags: [
-          {
-            tag: 'script',
-            attrs: {
-              async: true,
-              src: `https://www.googletagmanager.com/gtag/js?id=${trimmedGaId}`,
-            },
-            injectTo: 'head-prepend',
-          },
-          {
-            tag: 'script',
-            children: `window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', '${trimmedGaId}');`,
-            injectTo: 'head-prepend',
-          },
-        ],
-      };
-    },
-  };
-}
+export { googleTrackingPlugin, googleAnalyticsPlugin } from './src/lib/trackingPlugin.ts';
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const gaMeasurementId =
+  const gtmId =
+    env.GTM_ID ||
+    process.env.GTM_ID ||
+    env.VITE_GTM_ID ||
+    process.env.VITE_GTM_ID ||
     env.VITE_GA_MEASUREMENT_ID ||
-    process.env.VITE_GA_MEASUREMENT_ID ||
-    env.GA_MEASUREMENT_ID ||
-    process.env.GA_MEASUREMENT_ID;
+    process.env.VITE_GA_MEASUREMENT_ID;
 
 
   return {
     plugins: [
       react(),
       tailwindcss(),
-      googleAnalyticsPlugin(gaMeasurementId),
+      googleTrackingPlugin(gtmId),
     ],
     base: './',
     build: {
