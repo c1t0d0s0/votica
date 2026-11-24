@@ -14,7 +14,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
-    "firebase": "^12.19.0",
+    "firebase": "^13.4.0",
     "lucide-react": "^1.33.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.8",
@@ -35,6 +35,8 @@
     "vitest": "^4.1.11"
   },
   "overrides": {
-    "@grpc/grpc-js": "^1.14.5"
+    "@grpc/grpc-js": "^1.14.5",
+    "websocket-driver": "^0.8.0",
+    "websocket-extensions": "^0.2.0"
   }
 }
